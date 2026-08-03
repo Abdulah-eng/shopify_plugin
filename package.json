@@ -1,0 +1,17 @@
+{
+  "name": "shopify_plugin",
+  "version": "1.0.0",
+  "description": "",
+  "main": "configurator.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@gltf-transform/core": "^4.4.2",
+    "@gltf-transform/extensions": "^4.4.2",
+    "draco3dgltf": "^1.5.7"
+  }
+}

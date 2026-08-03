@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 80">
+  <rect width="120" height="80" fill="#CC0000" rx="8"/>
+  <ellipse cx="60" cy="40" rx="44" ry="28" fill="#fff"/>
+  <text x="50%" y="55%" dominant-baseline="middle" text-anchor="middle" font-family="Arial Black" font-size="14" font-weight="900" fill="#CC0000" letter-spacing="-1">RED BULL</text>
+</svg>

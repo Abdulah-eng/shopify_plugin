@@ -1,0 +1,137 @@
+{
+  "presets": [
+    {
+      "id": "stealth_yellow",
+      "name": "Stealth Yellow",
+      "thumbnail": "#D4FF00",
+      "colors": {
+        "front_fender": "#D4FF00",
+        "rear_fender": "#D4FF00",
+        "tank": "#0a0a0a",
+        "shroud_left": "#0a0a0a",
+        "shroud_right": "#0a0a0a",
+        "swingarm": "#1a1a1a",
+        "number_plate": "#D4FF00",
+        "hood": "#0a0a0a",
+        "side_panels": "#0a0a0a",
+        "front_bumper": "#1a1a1a"
+      },
+      "textColor": "#0a0a0a",
+      "numberColor": "#0a0a0a"
+    },
+    {
+      "id": "factory_red",
+      "name": "Factory Red",
+      "thumbnail": "#FF2233",
+      "colors": {
+        "front_fender": "#FF2233",
+        "rear_fender": "#FF2233",
+        "tank": "#111111",
+        "shroud_left": "#CC0011",
+        "shroud_right": "#CC0011",
+        "swingarm": "#222222",
+        "number_plate": "#ffffff",
+        "hood": "#111111",
+        "side_panels": "#CC0011",
+        "front_bumper": "#222222"
+      },
+      "textColor": "#111111",
+      "numberColor": "#111111"
+    },
+    {
+      "id": "ocean_blue",
+      "name": "Ocean Blue",
+      "thumbnail": "#0066FF",
+      "colors": {
+        "front_fender": "#0066FF",
+        "rear_fender": "#0066FF",
+        "tank": "#001133",
+        "shroud_left": "#0044CC",
+        "shroud_right": "#0044CC",
+        "swingarm": "#111122",
+        "number_plate": "#00AAFF",
+        "hood": "#001133",
+        "side_panels": "#0044CC",
+        "front_bumper": "#111122"
+      },
+      "textColor": "#ffffff",
+      "numberColor": "#ffffff"
+    },
+    {
+      "id": "fire_orange",
+      "name": "Fire Orange",
+      "thumbnail": "#FF6600",
+      "colors": {
+        "front_fender": "#FF6600",
+        "rear_fender": "#FF6600",
+        "tank": "#111111",
+        "shroud_left": "#CC4400",
+        "shroud_right": "#CC4400",
+        "swingarm": "#222222",
+        "number_plate": "#ffffff",
+        "hood": "#111111",
+        "side_panels": "#CC4400",
+        "front_bumper": "#222222"
+      },
+      "textColor": "#111111",
+      "numberColor": "#111111"
+    },
+    {
+      "id": "arctic_white",
+      "name": "Arctic White",
+      "thumbnail": "#F0F0F0",
+      "colors": {
+        "front_fender": "#F0F0F0",
+        "rear_fender": "#F0F0F0",
+        "tank": "#E0E0E0",
+        "shroud_left": "#D0D0D0",
+        "shroud_right": "#D0D0D0",
+        "swingarm": "#B0B0B0",
+        "number_plate": "#ffffff",
+        "hood": "#E0E0E0",
+        "side_panels": "#D0D0D0",
+        "front_bumper": "#B0B0B0"
+      },
+      "textColor": "#111111",
+      "numberColor": "#111111"
+    },
+    {
+      "id": "neon_green",
+      "name": "Neon Green",
+      "thumbnail": "#00FF88",
+      "colors": {
+        "front_fender": "#00FF88",
+        "rear_fender": "#00FF88",
+        "tank": "#002211",
+        "shroud_left": "#00CC66",
+        "shroud_right": "#00CC66",
+        "swingarm": "#001a0d",
+        "number_plate": "#00FF88",
+        "hood": "#002211",
+        "side_panels": "#00CC66",
+        "front_bumper": "#001a0d"
+      },
+      "textColor": "#001a0d",
+      "numberColor": "#001a0d"
+    },
+    {
+      "id": "purple_haze",
+      "name": "Purple Haze",
+      "thumbnail": "#8800FF",
+      "colors": {
+        "front_fender": "#AA22FF",
+        "rear_fender": "#AA22FF",
+        "tank": "#110022",
+        "shroud_left": "#7700CC",
+        "shroud_right": "#7700CC",
+        "swingarm": "#220033",
+        "number_plate": "#CC66FF",
+        "hood": "#110022",
+        "side_panels": "#7700CC",
+        "front_bumper": "#220033"
+      },
+      "textColor": "#ffffff",
+      "numberColor": "#ffffff"
+    }
+  ]
+}

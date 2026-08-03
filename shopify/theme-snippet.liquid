@@ -1,0 +1,300 @@
+{%- comment -%}
+  4D Design Graphics – 3D Configurator Shopify Theme Snippet
+  
+  INSTALLATION:
+  1. In Shopify Admin → Online Store → Themes → Edit Code
+  2. Under Snippets, create a new snippet named: 4d-configurator
+  3. Paste this entire file content
+  4. In your product page template (e.g. sections/product-template.liquid or product.liquid),
+     add the following where you want the configurator to appear:
+     
+       {% render '4d-configurator', product: product %}
+     
+  5. Optionally restrict to specific products using product tags:
+  
+       {% if product.tags contains '3d-configurator' %}
+         {% render '4d-configurator', product: product %}
+       {% endif %}
+
+  CONFIGURATION:
+  - Set configurator_url to your hosted configurator URL
+  - The iframe communicates via postMessage API
+{%- endcomment -%}
+
+{%- liquid
+  assign configurator_url = '/'
+  comment
+    Replace with your configurator's hosted URL, e.g.:
+    assign configurator_url = 'https://config.4ddesignsgraphics.com'
+    or if hosting as Shopify asset:
+    assign configurator_url = shop.url | append: '/pages/3d-configurator'
+  endcomment
+  assign show_configurator = false
+  if product.tags contains '3d-configurator'
+    assign show_configurator = true
+  endif
+  if product.type == 'Graphic Kit'
+    assign show_configurator = true
+  endif
+-%}
+
+{%- if show_configurator -%}
+
+<div class="fourD-configurator-wrapper" id="configurator-wrapper-{{ product.id }}">
+  
+  <!-- Launch Button -->
+  <button
+    class="fourD-launch-btn"
+    id="launch-configurator-{{ product.id }}"
+    aria-label="Open 3D Configurator for {{ product.title | escape }}"
+    data-product-id="{{ product.id }}"
+    data-variant-id="{{ product.selected_or_first_available_variant.id }}"
+    data-configurator-url="{{ configurator_url }}"
+  >
+    <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M10 2L2 6v8l8 4 8-4V6l-8-4z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
+      <path d="M2 6l8 4M10 10l8-4M10 10v8" stroke="currentColor" stroke-width="1.5"/>
+    </svg>
+    Customize in 3D
+  </button>
+
+  <!-- Full-Screen Modal -->
+  <div
+    class="fourD-modal"
+    id="configurator-modal-{{ product.id }}"
+    role="dialog"
+    aria-modal="true"
+    aria-label="3D Product Configurator"
+    style="display:none;"
+  >
+    <div class="fourD-modal-header">
+      <span class="fourD-modal-title">3D CONFIGURATOR</span>
+      <button class="fourD-modal-close" id="close-configurator-{{ product.id }}" aria-label="Close configurator">
+        <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+          <line x1="4" y1="4" x2="16" y2="16" stroke="currentColor" stroke-width="2"/>
+          <line x1="16" y1="4" x2="4" y2="16" stroke="currentColor" stroke-width="2"/>
+        </svg>
+      </button>
+    </div>
+    <div class="fourD-iframe-container">
+      <div class="fourD-loading" id="configurator-loading-{{ product.id }}">
+        <div class="fourD-spinner"></div>
+        <span>Loading 3D Configurator…</span>
+      </div>
+      <iframe
+        id="configurator-iframe-{{ product.id }}"
+        src="about:blank"
+        title="4D Design 3D Motorcycle Configurator"
+        allow="fullscreen; clipboard-write"
+        loading="lazy"
+        style="opacity:0; transition:opacity 0.4s;"
+      ></iframe>
+    </div>
+  </div>
+
+  <!-- Backdrop -->
+  <div class="fourD-backdrop" id="configurator-backdrop-{{ product.id }}" style="display:none;"></div>
+
+</div>
+
+{%- endif -%}
+
+<!-- Styles (injected once via comment check) -->
+{%- unless configurator_styles_injected -%}
+{%- assign configurator_styles_injected = true -%}
+<style>
+  /* 4D Design Configurator - Shopify Theme Styles */
+  .fourD-launch-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    padding: 14px 24px;
+    background: #D4FF00;
+    color: #0a0a0a;
+    border: none;
+    border-radius: 8px;
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    cursor: pointer;
+    width: 100%;
+    justify-content: center;
+    margin-bottom: 12px;
+    transition: all 0.2s ease;
+  }
+  .fourD-launch-btn:hover {
+    background: #e8ff33;
+    transform: translateY(-1px);
+    box-shadow: 0 8px 24px rgba(212, 255, 0, 0.3);
+  }
+
+  .fourD-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 99999;
+    background: #0a0a0a;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .fourD-modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 20px;
+    height: 52px;
+    background: #111;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+    flex-shrink: 0;
+  }
+
+  .fourD-modal-title {
+    font-family: 'Bebas Neue', 'Impact', sans-serif;
+    font-size: 18px;
+    letter-spacing: 3px;
+    color: #D4FF00;
+  }
+
+  .fourD-modal-close {
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 8px;
+    color: #aaa;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .fourD-modal-close:hover { color: #fff; background: rgba(255,255,255,0.1); }
+
+  .fourD-iframe-container {
+    flex: 1;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .fourD-iframe-container iframe {
+    width: 100%;
+    height: 100%;
+    border: none;
+    display: block;
+  }
+
+  .fourD-loading {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    background: #0a0a0a;
+    color: #aaa;
+    font-size: 13px;
+    letter-spacing: 1px;
+    z-index: 2;
+  }
+
+  .fourD-spinner {
+    width: 40px;
+    height: 40px;
+    border: 3px solid rgba(212,255,0,0.2);
+    border-top-color: #D4FF00;
+    border-radius: 50%;
+    animation: fourD-spin 0.8s linear infinite;
+  }
+  @keyframes fourD-spin { to { transform: rotate(360deg); } }
+
+  .fourD-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.8);
+    z-index: 99998;
+    backdrop-filter: blur(4px);
+  }
+
+  @media (max-width: 600px) {
+    .fourD-modal { border-radius: 0; }
+  }
+</style>
+{%- endunless -%}
+
+<!-- Script -->
+<script>
+(function() {
+  var productId = {{ product.id | json }};
+  var variantId = {{ product.selected_or_first_available_variant.id | json }};
+  var configuratorUrl = {{ configurator_url | json }};
+
+  var launchBtn = document.getElementById('launch-configurator-' + productId);
+  var modal = document.getElementById('configurator-modal-' + productId);
+  var backdrop = document.getElementById('configurator-backdrop-' + productId);
+  var closeBtn = document.getElementById('close-configurator-' + productId);
+  var iframe = document.getElementById('configurator-iframe-' + productId);
+  var loading = document.getElementById('configurator-loading-' + productId);
+
+  if (!launchBtn || !modal) return;
+
+  // Open configurator
+  launchBtn.addEventListener('click', function() {
+    modal.style.display = 'flex';
+    backdrop.style.display = 'block';
+    document.body.style.overflow = 'hidden';
+
+    // Lazy-load iframe on first open
+    if (iframe.src === 'about:blank') {
+      var url = new URL(configuratorUrl, window.location.origin);
+      url.searchParams.set('productId', productId);
+      url.searchParams.set('variantId', variantId);
+      iframe.src = url.toString();
+
+      iframe.addEventListener('load', function() {
+        loading.style.display = 'none';
+        iframe.style.opacity = '1';
+      }, { once: true });
+    }
+  });
+
+  // Close handlers
+  function closeModal() {
+    modal.style.display = 'none';
+    backdrop.style.display = 'none';
+    document.body.style.overflow = '';
+  }
+  closeBtn.addEventListener('click', closeModal);
+  backdrop.addEventListener('click', closeModal);
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') closeModal();
+  });
+
+  // Listen for cart events from iframe
+  window.addEventListener('message', function(event) {
+    // Validate origin in production
+    var data = event.data || {};
+
+    if (data.type === '4d:ready') {
+      // Configurator loaded — send product context
+      iframe.contentWindow.postMessage({
+        type: '4d:init',
+        productId: productId,
+        variantId: variantId,
+      }, '*');
+    }
+
+    if (data.type === '4d:cart-added') {
+      // Cart was updated from within configurator
+      closeModal();
+      // Trigger theme cart refresh
+      document.dispatchEvent(new CustomEvent('cart:refresh', { bubbles: true }));
+      // Try to open cart drawer (common pattern)
+      var cartDrawerTrigger = document.querySelector('[data-cart-drawer-trigger], .js-cart-trigger, #cart-icon-bubble');
+      if (cartDrawerTrigger) cartDrawerTrigger.click();
+    }
+  });
+})();
+</script>

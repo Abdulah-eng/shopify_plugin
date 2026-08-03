@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 80">
+  <rect width="120" height="80" fill="#222" rx="8"/>
+  <text x="50%" y="40%" dominant-baseline="middle" text-anchor="middle" font-family="Arial Black" font-size="11" font-weight="900" fill="white" letter-spacing="2">ALPINESTARS</text>
+  <polygon points="60,45 80,70 40,70" fill="#E8001C"/>
+</svg>

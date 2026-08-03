@@ -1,0 +1,81 @@
+{
+  "models": [
+    {
+      "id": "drz400sm",
+      "name": "DRZ 400SM",
+      "brand": "Suzuki",
+      "category": "Street Bike",
+      "shopifyProductId": "YOUR_PRODUCT_ID",
+      "shopifyVariantId": "YOUR_VARIANT_ID",
+      "price": 56500,
+      "currency": "PKR",
+      "glb": "models/drz400sm/drz400sm.glb",
+      "thumbnail": "models/drz400sm/thumb.jpg",
+      "years": ["2000-2024", "2025-PRESENT", "DR 650"],
+      "plastics": ["OEM", "POLISPORT RESTYLE"],
+      "frontFenders": ["OEM", "ACERBIS EVOLUTION", "RTECH SUPERMOTO"],
+      "printBases": ["STANDARD", "SILVER CHROME", "HOLOGRAPHIC CHROME", "REFLECTIVE PRINT"],
+      "laminates": ["GLOSS", "MATTE", "GALACTIC"],
+      "wheelsGraphics": ["NONE", "FRONT ONLY", "REAR ONLY", "FRONT + REAR"],
+      "colorZones": [
+        { "id": "front_fender", "name": "Front Fender", "meshName": "Mesh_FrontFender", "default": "#D4FF00" },
+        { "id": "rear_fender", "name": "Rear Fender", "meshName": "Mesh_RearFender", "default": "#D4FF00" },
+        { "id": "tank", "name": "Tank", "meshName": "Mesh_Tank", "default": "#111111" },
+        { "id": "shroud_left", "name": "Left Shroud", "meshName": "Mesh_ShroudL", "default": "#111111" },
+        { "id": "shroud_right", "name": "Right Shroud", "meshName": "Mesh_ShroudR", "default": "#111111" },
+        { "id": "swingarm", "name": "Swingarm", "meshName": "Mesh_Swingarm", "default": "#222222" },
+        { "id": "number_plate", "name": "Number Plate", "meshName": "Mesh_NumberPlate", "default": "#ffffff" }
+      ],
+      "decalMesh": "Mesh_GraphicDecal",
+      "cameraFov": 45,
+      "cameraPosition": [0, 0.6, 2.8],
+      "cameraTarget": [0, 0.3, 0],
+      "scale": 1.0
+    },
+    {
+      "id": "yfz450r",
+      "name": "YFZ 450R",
+      "brand": "Yamaha",
+      "category": "ATV",
+      "shopifyProductId": "YOUR_PRODUCT_ID_2",
+      "shopifyVariantId": "YOUR_VARIANT_ID_2",
+      "price": 48000,
+      "currency": "PKR",
+      "glb": "models/yfz450r/yfz450r.glb",
+      "thumbnail": "models/yfz450r/thumb.jpg",
+      "years": ["2009-2013", "2014-2018", "2019-2026"],
+      "plastics": ["OEM", "ACERBIS"],
+      "frontFenders": ["OEM", "ACERBIS"],
+      "printBases": ["STANDARD", "SILVER CHROME", "HOLOGRAPHIC CHROME"],
+      "laminates": ["GLOSS", "MATTE"],
+      "wheelsGraphics": ["NONE", "FULL SET"],
+      "colorZones": [
+        { "id": "front_fender", "name": "Front Fender", "meshName": "body_f_carpaint_second", "default": "#0055aa" },
+        { "id": "rear_fender", "name": "Rear Fender", "meshName": "body_rear_carpaint_second", "default": "#0055aa" },
+        { "id": "hood", "name": "Hood", "meshName": "black_hood_parts", "default": "#111111" },
+        { "id": "side_panels", "name": "Side Panels", "meshName": "body_carpaint", "default": "#111111" },
+        { "id": "front_bumper", "name": "Front Bumper", "meshName": "bumper", "default": "#333333" }
+      ],
+      "decalMesh": ["sticker", "graphic"],
+      "cameraFov": 50,
+      "cameraPosition": [0, 0.8, 3.2],
+      "cameraTarget": [0, 0.4, 0],
+      "scale": 0.85
+    }
+  ],
+  "fontOptions": [
+    { "id": "bebas", "name": "Bebas Neue", "family": "'Bebas Neue', Impact, sans-serif", "url": "https://fonts.googleapis.com/css2?family=Bebas+Neue&display=swap" },
+    { "id": "racing", "name": "Racing Sans One", "family": "'Racing Sans One', Impact, sans-serif", "url": "https://fonts.googleapis.com/css2?family=Racing+Sans+One&display=swap" },
+    { "id": "orbitron", "name": "Orbitron", "family": "'Orbitron', sans-serif", "url": "https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&display=swap" },
+    { "id": "bangers", "name": "Bangers", "family": "'Bangers', cursive", "url": "https://fonts.googleapis.com/css2?family=Bangers&display=swap" },
+    { "id": "russo", "name": "Russo One", "family": "'Russo One', sans-serif", "url": "https://fonts.googleapis.com/css2?family=Russo+One&display=swap" }
+  ],
+  "logoOptions": [
+    { "id": "none", "name": "None", "file": null },
+    { "id": "4d_logo", "name": "4D Design", "file": "assets/logos/4d-logo.svg" },
+    { "id": "fox_logo", "name": "Fox Racing", "file": "assets/logos/fox-logo.svg" },
+    { "id": "alpinestars", "name": "Alpinestars", "file": "assets/logos/alpinestars.svg" },
+    { "id": "red_bull", "name": "Red Bull", "file": "assets/logos/redbull.svg" },
+    { "id": "monster", "name": "Monster Energy", "file": "assets/logos/monster.svg" }
+  ]
+}
