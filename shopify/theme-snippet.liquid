@@ -22,20 +22,14 @@
 {%- endcomment -%}
 
 {%- liquid
-  assign configurator_url = '/'
+  assign configurator_url = 'https://shopify-plugin-chi.vercel.app'
   comment
     Replace with your configurator's hosted URL, e.g.:
     assign configurator_url = 'https://config.4ddesignsgraphics.com'
     or if hosting as Shopify asset:
     assign configurator_url = shop.url | append: '/pages/3d-configurator'
   endcomment
-  assign show_configurator = false
-  if product.tags contains '3d-configurator'
-    assign show_configurator = true
-  endif
-  if product.type == 'Graphic Kit'
-    assign show_configurator = true
-  endif
+  assign show_configurator = true
 -%}
 
 {%- if show_configurator -%}
@@ -85,9 +79,9 @@
         id="configurator-iframe-{{ product.id }}"
         src="about:blank"
         title="4D Design 3D Motorcycle Configurator"
-        allow="fullscreen; clipboard-write"
+        allow="fullscreen; clipboard-write; xr-spatial-tracking"
         loading="lazy"
-        style="opacity:0; transition:opacity 0.4s;"
+        style="opacity:0; transition:opacity 0.4s; width: 100%; height: 100%; border: none;"
       ></iframe>
     </div>
   </div>
