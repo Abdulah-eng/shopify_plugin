@@ -703,6 +703,7 @@ input, select, textarea { font-family: inherit; }
   .logo-card { padding: 8px 6px; }
   .font-card { padding: 7px 10px; }
   .font-card-preview { font-size: 14px; }
+}
 
 /* Hide the bottom nav on desktop */
 #mobile-bottom-nav { display: none; }
