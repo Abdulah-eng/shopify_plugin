@@ -215,14 +215,24 @@ class MotorcycleConfigurator {
   _setupResizeObserver() {
     const ro = new ResizeObserver(() => this._onResize());
     ro.observe(this.canvas.parentElement);
+    // Also respond to window resize
+    window.addEventListener('resize', () => this._onResize());
   }
 
   _onResize() {
-    const w = this.canvas.offsetWidth;
-    const h = this.canvas.offsetHeight;
+    // Use the viewer element's actual dimensions, not the canvas
+    const viewer = this.canvas.parentElement;
+    const w = viewer.clientWidth;
+    const h = viewer.clientHeight;
+    if (w === 0 || h === 0) return;
     this.camera.aspect = w / h;
     this.camera.updateProjectionMatrix();
-    this.renderer.setSize(w, h);
+    this.renderer.setSize(w, h, false);
+  }
+
+  forceResize() {
+    // Call this after any layout animation completes
+    this._onResize();
   }
 
   _animate() {
@@ -1285,6 +1295,7 @@ async function init() {
   // Init Three.js
   configurator = new MotorcycleConfigurator(canvas);
   configurator.init();
+  window._configuratorEngine = configurator;
 
   // Build UI
   buildColorPresets(COLOR_PRESETS.presets);
@@ -1368,3 +1379,4 @@ window.addEventListener('load', () => {
 
 // Expose for Shopify theme integration
 window.configurator4D = { state, selectModel, addToCart, showToast };
+window._configuratorEngine = null; // Will be set in init

@@ -593,14 +593,14 @@ input, select, textarea { font-family: inherit; }
   /* ── 3. Config panel becomes a bottom drawer ── */
   #config-panel {
     position: fixed !important;
-    bottom: 64px;   /* sit above the bottom nav bar */
+    bottom: 56px;   /* sit above the bottom nav bar */
     left: 0; right: 0;
     width: 100% !important;
     height: 0;
-    max-height: 55vh;
+    max-height: 38vh;
     border-right: none !important;
     border-top: 1px solid var(--border);
-    border-radius: 20px 20px 0 0;
+    border-radius: 16px 16px 0 0;
     overflow: hidden;
     transition: height 0.35s cubic-bezier(0.4, 0, 0.2, 1) !important;
     z-index: 300;
@@ -608,7 +608,7 @@ input, select, textarea { font-family: inherit; }
   }
   #config-panel.open {
     width: 100% !important;
-    height: 55vh;
+    height: 38vh;
   }
 
   /* Panel pages take full width */
@@ -632,13 +632,13 @@ input, select, textarea { font-family: inherit; }
   #mobile-bottom-nav {
     position: fixed;
     bottom: 0; left: 0; right: 0;
-    height: 64px;
+    height: 56px;
     background: var(--panel-bg);
     border-top: 1px solid var(--border);
     display: flex !important;
     align-items: center;
     justify-content: space-around;
-    padding: 0 8px;
+    padding: 0 4px;
     z-index: 400;
     box-shadow: 0 -2px 12px rgba(0,0,0,0.08);
   }
@@ -646,18 +646,18 @@ input, select, textarea { font-family: inherit; }
     display: flex !important;
     flex-direction: column;
     align-items: center;
-    gap: 3px;
-    padding: 6px 12px;
-    border-radius: 12px;
+    gap: 2px;
+    padding: 4px 8px;
+    border-radius: 10px;
     color: var(--text-muted);
-    font-size: 9px; font-weight: 700; letter-spacing: 1px;
+    font-size: 8px; font-weight: 700; letter-spacing: 0.5px;
     text-transform: uppercase;
     transition: all 0.15s;
-    min-width: 52px;
+    min-width: 44px;
     cursor: pointer;
     background: none; border: none; font-family: inherit;
   }
-  .mob-nav-btn svg { width: 22px; height: 22px; }
+  .mob-nav-btn svg { width: 18px; height: 18px; }
   .mob-nav-btn.active {
     background: var(--accent);
     color: #0a0a0a;
@@ -668,8 +668,8 @@ input, select, textarea { font-family: inherit; }
   .mob-nav-btn.cart-mob {
     background: var(--accent);
     color: #0a0a0a;
-    border-radius: 12px;
-    padding: 6px 16px;
+    border-radius: 10px;
+    padding: 4px 14px;
   }
   .mob-nav-btn.cart-mob.loading .mob-cart-label { display: none; }
   .mob-nav-btn.cart-mob .cart-spinner { display: none; animation: spin 0.8s linear infinite; }
@@ -677,9 +677,32 @@ input, select, textarea { font-family: inherit; }
 
   /* Push viewer up so content isn't hidden under bottom nav */
   #viewer {
-    padding-bottom: 64px;
+    padding-bottom: 56px;
   }
-}
+
+  /* Compact panel content on mobile */
+  .panel-hd { padding: 8px 14px; }
+  .panel-hd-title { font-size: 13px; letter-spacing: 2px; }
+  .panel-body { padding: 8px 14px 12px; gap: 0; }
+  .panel-section-label { font-size: 9px; margin-top: 8px; margin-bottom: 4px; }
+  .panel-section-label:first-child { margin-top: 0; }
+  .option-pills { gap: 4px; }
+  .option-pill { padding: 5px 10px; font-size: 10px; }
+  .color-picker-row { padding: 7px 10px; margin-bottom: 5px; }
+  .color-picker-swatch { width: 28px; height: 28px; border-radius: 6px; }
+  .color-picker-name { font-size: 11px; }
+  .color-picker-hex { font-size: 10px; }
+  .preset-grid { grid-template-columns: repeat(7, 1fr); gap: 5px; }
+  .panel-input { padding: 7px 10px; font-size: 12px; }
+  .text-preview-box { font-size: 20px; min-height: 36px; padding: 5px 10px; }
+  .number-preview-box { font-size: 32px; min-height: 50px; }
+  .text-color-dot { width: 22px; height: 22px; }
+  .color-zone-tabs { gap: 4px; margin-bottom: 8px; }
+  .zone-tab { padding: 3px 8px; font-size: 9px; }
+  .logo-grid { grid-template-columns: repeat(3, 1fr); gap: 6px; }
+  .logo-card { padding: 8px 6px; }
+  .font-card { padding: 7px 10px; }
+  .font-card-preview { font-size: 14px; }
 
 /* Hide the bottom nav on desktop */
 #mobile-bottom-nav { display: none; }

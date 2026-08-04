@@ -404,6 +404,15 @@
 <script>
 (function() {
   var panelOpen = false;
+  var TRANSITION_MS = 360; // must match CSS transition duration
+
+  function triggerResize() {
+    setTimeout(function() {
+      if (window._configuratorEngine) {
+        window._configuratorEngine.forceResize();
+      }
+    }, TRANSITION_MS);
+  }
 
   function openPanel(tabId) {
     document.querySelectorAll('.panel-page').forEach(function(p) { p.classList.remove('active'); });
@@ -411,12 +420,14 @@
     if (page) page.classList.add('active');
     document.getElementById('config-panel').classList.add('open');
     panelOpen = true;
+    triggerResize();
   }
 
   function closePanel() {
     document.getElementById('config-panel').classList.remove('open');
     panelOpen = false;
     document.querySelectorAll('.icon-tab, .mob-nav-btn[data-tab]').forEach(function(t) { t.classList.remove('active'); });
+    triggerResize();
   }
 
   // Desktop icon tabs
