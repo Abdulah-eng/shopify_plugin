@@ -328,14 +328,9 @@ class MotorcycleConfigurator {
                 objName === 'plane' ||
                 (objName.startsWith('plane.') && !objName.includes('.006') && !objName.includes('.007') && !objName.includes('.008') && !objName.includes('.009')) ||
                 objName.includes('render.') ||
-                objName.includes('cylinder') ||
-                objName.includes('circle') ||
-                objName.includes('cube') ||
-                objName.includes('bolt') ||
-                objName.includes('hex nut') ||
                 (objName.startsWith('black_tubes_handlebar') && !objName.includes('.00'))
               );
-
+              
               if (isToHide) {
                 obj.visible = false;
                 if (obj.isMesh) {
