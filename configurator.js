@@ -99,16 +99,16 @@ class MotorcycleConfigurator {
 
   _setupScene() {
     this.scene = new THREE.Scene();
-    // Gradient background
-    this.scene.background = new THREE.Color(0x080808);
-    this.scene.fog = new THREE.FogExp2(0x080808, 0.08);
+    // Light background
+    this.scene.background = new THREE.Color(0xF0F2F5);
+    this.scene.fog = new THREE.FogExp2(0xF0F2F5, 0.05);
 
     // Ground plane
     const groundGeo = new THREE.PlaneGeometry(20, 20);
     const groundMat = new THREE.MeshStandardMaterial({
-      color: 0x111111,
-      roughness: 0.9,
-      metalness: 0.1,
+      color: 0xE4E6EB,
+      roughness: 0.85,
+      metalness: 0.05,
     });
     const ground = new THREE.Mesh(groundGeo, groundMat);
     ground.rotation.x = -Math.PI / 2;
@@ -117,16 +117,16 @@ class MotorcycleConfigurator {
     this.scene.add(ground);
 
     // Grid helper
-    const grid = new THREE.GridHelper(12, 24, 0x222222, 0x1a1a1a);
+    const grid = new THREE.GridHelper(12, 24, 0xC0C4CC, 0xD0D3DA);
     grid.position.y = 0;
     this.scene.add(grid);
 
     // Reflective circle under bike
     const circleGeo = new THREE.CircleGeometry(1.4, 64);
     const circleMat = new THREE.MeshStandardMaterial({
-      color: 0x1a1a1a,
-      roughness: 0.3,
-      metalness: 0.6,
+      color: 0xDDDFE5,
+      roughness: 0.2,
+      metalness: 0.5,
     });
     const circle = new THREE.Mesh(circleGeo, circleMat);
     circle.rotation.x = -Math.PI / 2;
@@ -142,12 +142,12 @@ class MotorcycleConfigurator {
   }
 
   _setupLights() {
-    // Ambient
-    const ambient = new THREE.AmbientLight(0xffffff, 0.4);
+    // Ambient — brighter for light theme
+    const ambient = new THREE.AmbientLight(0xffffff, 0.9);
     this.scene.add(ambient);
 
-    // Key light (warm)
-    const key = new THREE.DirectionalLight(0xfff5e0, 1.8);
+    // Key light (neutral white)
+    const key = new THREE.DirectionalLight(0xffffff, 1.4);
     key.position.set(3, 4, 3);
     key.castShadow = true;
     key.shadow.mapSize.set(2048, 2048);
@@ -161,17 +161,17 @@ class MotorcycleConfigurator {
     this.scene.add(key);
 
     // Fill light (cool)
-    const fill = new THREE.DirectionalLight(0xc0d8ff, 0.8);
+    const fill = new THREE.DirectionalLight(0xe8eeff, 0.7);
     fill.position.set(-4, 2, -2);
     this.scene.add(fill);
 
-    // Rim light (accent yellow)
-    const rim = new THREE.DirectionalLight(0xD4FF00, 0.6);
+    // Rim light (subtle accent)
+    const rim = new THREE.DirectionalLight(0xffffff, 0.4);
     rim.position.set(0, 1, -4);
     this.scene.add(rim);
 
     // Hemisphere
-    const hemi = new THREE.HemisphereLight(0x4466aa, 0x221100, 0.3);
+    const hemi = new THREE.HemisphereLight(0xdde8ff, 0xf5f5f0, 0.5);
     this.scene.add(hemi);
   }
 
