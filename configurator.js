@@ -137,8 +137,8 @@ class MotorcycleConfigurator {
 
   _setupCamera() {
     const aspect = this.canvas.offsetWidth / this.canvas.offsetHeight;
-    this.camera = new THREE.PerspectiveCamera(45, aspect, 0.1, 100);
-    this.camera.position.set(0, 0.6, 2.8);
+    this.camera = new THREE.PerspectiveCamera(42, aspect, 0.1, 100);
+    this.camera.position.set(0, 0.8, 3.4);
   }
 
   _setupLights() {
@@ -177,16 +177,16 @@ class MotorcycleConfigurator {
 
   _setupControls() {
     this.controls = new OrbitControls(this.camera, this.canvas);
-    this.controls.target.set(0, 0.3, 0);
+    this.controls.target.set(0, 0.45, 0);
     this.controls.enableDamping = true;
     this.controls.dampingFactor = 0.06;
     this.controls.enablePan = false;
-    this.controls.minDistance = 1.2;
-    this.controls.maxDistance = 6;
-    this.controls.minPolarAngle = Math.PI * 0.15;
+    this.controls.minDistance = 1.5;
+    this.controls.maxDistance = 5;
+    this.controls.minPolarAngle = Math.PI * 0.1;
     this.controls.maxPolarAngle = Math.PI * 0.65;
     this.controls.autoRotate = true;
-    this.controls.autoRotateSpeed = 1.2;
+    this.controls.autoRotateSpeed = 0.9;
 
     // Pause auto-rotate on interaction
     this.canvas.addEventListener('pointerdown', () => this._pauseAutoRotate());
@@ -1023,11 +1023,14 @@ async function selectModel(modelId) {
   buildColorZoneTabs(modelConfig);
   updateColorPickerUI();
 
-  // Set price
+  // Set price in left strip
   const priceEl = document.getElementById('price-value');
   if (priceEl) {
-    priceEl.innerHTML = `<span class="price-currency">${modelConfig.currency}</span>${modelConfig.price.toLocaleString()}`;
+    priceEl.textContent = modelConfig.currency + ' ' + modelConfig.price.toLocaleString();
   }
+  // Update model name in strip
+  const stripName = document.getElementById('strip-model-name');
+  if (stripName) stripName.textContent = modelConfig.name;
 
   // Load 3D model
   setLoadingProgress(10, 'Loading model…');
@@ -1101,37 +1104,7 @@ function updateSummary() {
     { key: 'Font',    val: state.nameFont || '—' },
     { key: 'Logo',    val: state.logo || 'None' },
   ];
-
-  const list = document.getElementById('summary-items');
-  if (!list) return;
-  list.innerHTML = items.map(item => `
-    <div class="summary-item">
-      <div class="summary-item-key">${item.key}</div>
-      <div class="summary-item-val">${item.val}</div>
-    </div>`).join('');
-
-  // Color zone summary
-  if (state.modelConfig) {
-    state.modelConfig.colorZones.slice(0, 3).forEach(zone => {
-      const hex = state.colors[zone.id] || zone.default;
-      list.innerHTML += `
-        <div class="summary-item">
-          <div class="summary-item-key">${zone.name}</div>
-          <div class="summary-item-val">
-            <div class="summary-color-dot" style="background:${hex}"></div>
-            ${hex.toUpperCase()}
-          </div>
-        </div>`;
-    });
-  }
-
-  // Snapshot
-  const snap = document.getElementById('summary-snapshot');
-  if (snap && state.modelId && configurator.model) {
-    try {
-      snap.src = configurator.captureScreenshot();
-    } catch (e) { /* cross-origin canvas */ }
-  }
+  // summary-items no longer exists in new layout; kept for compatibility
 }
 
 /* ============================================================
@@ -1237,7 +1210,7 @@ async function addToCart() {
 
   if (!state.year || !state.plastics) {
     showToast('⚠ Please select Year and Plastics options', 'error');
-    document.querySelector('[data-panel="panel-model"]')?.click();
+    document.getElementById('tab-kit')?.click();
     return;
   }
 
@@ -1314,13 +1287,11 @@ async function init() {
   configurator.init();
 
   // Build UI
-  buildModelSelector(MODELS_CONFIG.models);
   buildColorPresets(COLOR_PRESETS.presets);
   buildFontSelector(MODELS_CONFIG.fontOptions);
   buildLogoGrid(MODELS_CONFIG.logoOptions);
 
-  // Setup step nav
-  setupStepNav();
+  // Setup viewer controls
   setupViewerControls();
 
   // Text inputs
@@ -1362,7 +1333,6 @@ async function init() {
 
   // Add to cart button
   document.getElementById('btn-add-cart')?.addEventListener('click', addToCart);
-  document.getElementById('btn-add-cart-mobile')?.addEventListener('click', addToCart);
 
   // Modal close
   document.getElementById('modal-close')?.addEventListener('click', () => {
