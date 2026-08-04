@@ -337,8 +337,7 @@ class MotorcycleConfigurator {
                 (objName.startsWith('grey_handlebar_') && objName.endsWith('.001')) ||
                 (objName.startsWith('handles0') && objName.endsWith('.001')) ||
                 objName === 'handlebar_chrome01.001' ||
-                objName === 'handle.002' ||
-                (objName.startsWith('black_tubes_handlebar') && !objName.includes('.00'))
+                objName === 'handle.002'
               );
               
               if (isToHide) {
