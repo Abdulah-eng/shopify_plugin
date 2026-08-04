@@ -341,30 +341,71 @@
   </div>
 </div>
 
+<!-- MOBILE BOTTOM NAV (hidden on desktop via CSS) -->
+<div id="mobile-bottom-nav">
+
+  <button class="mob-nav-btn" data-tab="panel-kit" id="mob-tab-kit">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+      <circle cx="12" cy="12" r="3"/>
+      <path d="M19.07 4.93a10 10 0 010 14.14M4.93 4.93a10 10 0 000 14.14"/>
+    </svg>
+    KIT
+  </button>
+
+  <button class="mob-nav-btn" data-tab="panel-colors" id="mob-tab-colors">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+      <circle cx="13.5" cy="6.5" r="1.5" fill="currentColor"/>
+      <circle cx="17.5" cy="10.5" r="1.5" fill="currentColor"/>
+      <circle cx="8.5" cy="7.5" r="1.5" fill="currentColor"/>
+      <circle cx="6.5" cy="12.5" r="1.5" fill="currentColor"/>
+      <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10c1.1 0 2-.9 2-2 0-.53-.21-1.01-.54-1.37-.32-.36-.52-.84-.52-1.37 0-1.1.9-2 2-2h2.35C19.95 15.26 22 13.76 22 12c0-5.52-4.48-10-10-10z"/>
+    </svg>
+    COLORS
+  </button>
+
+  <button class="mob-nav-btn" data-tab="panel-text" id="mob-tab-text">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+      <path d="M4 7V4h16v3"/>
+      <path d="M9 20h6"/>
+      <line x1="12" y1="4" x2="12" y2="20"/>
+    </svg>
+    RIDER
+  </button>
+
+  <button class="mob-nav-btn" data-tab="panel-logo" id="mob-tab-logo">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+      <polygon points="12,2 15.09,8.26 22,9.27 17,14.14 18.18,21.02 12,17.77 5.82,21.02 7,14.14 2,9.27 8.91,8.26"/>
+    </svg>
+    LOGO
+  </button>
+
+  <button class="mob-nav-btn cart-mob" id="btn-add-cart-mobile">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/>
+      <line x1="3" y1="6" x2="21" y2="6"/>
+      <path d="M16 10a4 4 0 01-8 0"/>
+    </svg>
+    <svg class="cart-spinner" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <circle cx="12" cy="12" r="10"/>
+    </svg>
+    <span class="mob-cart-label">ADD</span>
+  </button>
+
+</div>
+
 <!-- TOAST CONTAINER -->
 <div id="toast-container" aria-live="polite"></div>
 
 <!-- SCRIPTS -->
 <script src="shopify/cart-integration.js"></script>
-<script type="module" src="configurator.js?v=3"></script>
+<script type="module" src="configurator.js?v=4"></script>
 
-<!-- Icon tab switching -->
+<!-- Tab switching (desktop + mobile) -->
 <script>
 (function() {
-  var panelOpen = true;
+  var panelOpen = false;
 
-  function activateTab(tabEl) {
-    var tabId = tabEl.dataset.tab;
-    // If same tab clicked again, toggle panel
-    if (tabEl.classList.contains('active') && panelOpen) {
-      document.getElementById('config-panel').classList.remove('open');
-      panelOpen = false;
-      return;
-    }
-    // Activate tab
-    document.querySelectorAll('.icon-tab').forEach(function(t) { t.classList.remove('active'); });
-    tabEl.classList.add('active');
-    // Show panel
+  function openPanel(tabId) {
     document.querySelectorAll('.panel-page').forEach(function(p) { p.classList.remove('active'); });
     var page = document.getElementById(tabId);
     if (page) page.classList.add('active');
@@ -372,23 +413,57 @@
     panelOpen = true;
   }
 
-  document.querySelectorAll('.icon-tab').forEach(function(tab) {
-    tab.addEventListener('click', function() { activateTab(tab); });
-  });
+  function closePanel() {
+    document.getElementById('config-panel').classList.remove('open');
+    panelOpen = false;
+    document.querySelectorAll('.icon-tab, .mob-nav-btn[data-tab]').forEach(function(t) { t.classList.remove('active'); });
+  }
 
-  document.querySelectorAll('[data-close]').forEach(function(btn) {
-    btn.addEventListener('click', function() {
-      document.getElementById('config-panel').classList.remove('open');
-      panelOpen = false;
+  // Desktop icon tabs
+  document.querySelectorAll('.icon-tab').forEach(function(tab) {
+    tab.addEventListener('click', function() {
+      var tabId = tab.dataset.tab;
+      var alreadyActive = tab.classList.contains('active') && panelOpen;
       document.querySelectorAll('.icon-tab').forEach(function(t) { t.classList.remove('active'); });
+      if (alreadyActive) { closePanel(); return; }
+      tab.classList.add('active');
+      // Sync mobile tab highlight
+      var mobEquiv = document.querySelector('.mob-nav-btn[data-tab="' + tabId + '"]');
+      document.querySelectorAll('.mob-nav-btn[data-tab]').forEach(function(m) { m.classList.remove('active'); });
+      if (mobEquiv) mobEquiv.classList.add('active');
+      openPanel(tabId);
     });
   });
 
-  // Open kit panel by default after short delay
+  // Mobile bottom nav tabs
+  document.querySelectorAll('.mob-nav-btn[data-tab]').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      var tabId = btn.dataset.tab;
+      var alreadyActive = btn.classList.contains('active') && panelOpen;
+      document.querySelectorAll('.mob-nav-btn[data-tab]').forEach(function(b) { b.classList.remove('active'); });
+      // Sync desktop tab highlight
+      document.querySelectorAll('.icon-tab').forEach(function(t) { t.classList.remove('active'); });
+      var deskEquiv = document.querySelector('.icon-tab[data-tab="' + tabId + '"]');
+      if (alreadyActive) { closePanel(); return; }
+      btn.classList.add('active');
+      if (deskEquiv) deskEquiv.classList.add('active');
+      openPanel(tabId);
+    });
+  });
+
+  // Close button inside panels
+  document.querySelectorAll('[data-close]').forEach(function(btn) {
+    btn.addEventListener('click', closePanel);
+  });
+
+  // Open kit panel by default after model loads
   setTimeout(function() {
     var kitTab = document.getElementById('tab-kit');
-    if (kitTab) activateTab(kitTab);
-  }, 800);
+    var mobKitTab = document.getElementById('mob-tab-kit');
+    if (kitTab) kitTab.classList.add('active');
+    if (mobKitTab) mobKitTab.classList.add('active');
+    openPanel('panel-kit');
+  }, 900);
 })();
 </script>
 
