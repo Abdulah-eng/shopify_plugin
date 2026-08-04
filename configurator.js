@@ -259,6 +259,7 @@ class MotorcycleConfigurator {
       this.model = null;
       this.meshMap = {};
       this.zoneMaterials = {};
+      this.originalDecalImage = null;
     }
 
     // Try loading GLB
@@ -383,6 +384,9 @@ class MotorcycleConfigurator {
               }
 
               if (isDecal) {
+                if (oldMat && oldMat.map && oldMat.map.image) {
+                  this.originalDecalImage = oldMat.map.image;
+                }
                 obj.material = new THREE.MeshStandardMaterial({
                   map: this.decalTexture,
                   transparent: true,
@@ -665,6 +669,11 @@ class MotorcycleConfigurator {
     const h = this.decalCanvas.height;
 
     ctx.clearRect(0, 0, w, h);
+
+    // Draw the base graphic kit decals from the GLB model
+    if (this.originalDecalImage) {
+      ctx.drawImage(this.originalDecalImage, 0, 0, w, h);
+    }
 
     const fontMap = {
       bebas: "'Bebas Neue', Impact, sans-serif",
