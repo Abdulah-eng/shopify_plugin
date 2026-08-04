@@ -328,6 +328,21 @@ class MotorcycleConfigurator {
                 objName === 'plane' ||
                 (objName.startsWith('plane.') && !objName.includes('.006') && !objName.includes('.007') && !objName.includes('.008') && !objName.includes('.009')) ||
                 objName.includes('render.') ||
+                // Stray Blender default objects from Husqvarna/KTM scene
+                // (YFZ 450R parts all have descriptive prefixed names - never generic names)
+                /^cylinder(\.\d+)?$/.test(objName) ||
+                /^circle(\.\d+)?$/.test(objName) ||
+                /^cube(\.\d+)?$/.test(objName) ||
+                /^bolt(\.\d+)?$/.test(objName) ||
+                objName === 'hex nut' ||
+                // Duplicate handlebar sets from Husqvarna/KTM (all end in .001)
+                // The real YFZ 450R handlebars don't have the .001 suffix
+                (objName.startsWith('handlebar_') && objName.endsWith('.001')) ||
+                (objName.startsWith('black_tubes_handlebar') && objName.endsWith('.001')) ||
+                (objName.startsWith('grey_handlebar_') && objName.endsWith('.001')) ||
+                (objName.startsWith('handles0') && objName.endsWith('.001')) ||
+                objName === 'handlebar_chrome01.001' ||
+                objName === 'handle.002' ||
                 (objName.startsWith('black_tubes_handlebar') && !objName.includes('.00'))
               );
               
