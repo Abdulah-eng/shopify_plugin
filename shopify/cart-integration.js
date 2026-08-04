@@ -39,17 +39,17 @@
       };
 
       if (window.parent !== window) {
+        // Send cart payload to Shopify parent — parent will confirm via 4d:cart-added or 4d:cart-error
         window.parent.postMessage({
           type: '4d:trigger-add-to-cart',
           payload: payload
         }, '*');
+        // Don't show success modal here — wait for parent to confirm
       } else {
-        console.log("Mock add to cart:", payload);
+        // Standalone / demo mode: show success modal immediately
+        const modal = document.getElementById('success-modal');
+        if (modal) modal.classList.remove('hidden');
       }
-
-      // Show success modal locally
-      const modal = document.getElementById('success-modal');
-      if (modal) modal.classList.remove('hidden');
 
       return payload;
     },
@@ -139,6 +139,22 @@
     if (type === '4d:add-to-cart') {
       // Parent is triggering cart add
       window.configurator4D?.addToCart?.();
+    }
+
+    if (type === '4d:cart-added') {
+      // Shopify parent confirmed cart was successfully updated — show success modal
+      const modal = document.getElementById('success-modal');
+      if (modal) modal.classList.remove('hidden');
+      const btn = document.getElementById('btn-add-cart');
+      if (btn) btn.classList.remove('loading');
+    }
+
+    if (type === '4d:cart-error') {
+      // Shopify parent reported a cart error
+      const errorMsg = (data && data.error) ? data.error : 'Could not add to cart';
+      window.configurator4D?.showToast?.('⚠ ' + errorMsg, 'error');
+      const btn = document.getElementById('btn-add-cart');
+      if (btn) btn.classList.remove('loading');
     }
   });
 

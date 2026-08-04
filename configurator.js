@@ -1273,9 +1273,13 @@ async function addToCart() {
       properties,
       previewDataUrl,
     });
+    // If in iframe mode, the loading state is removed by the postMessage handler (4d:cart-added/4d:cart-error)
+    // If in standalone mode, remove loading now
+    if (window.parent === window) {
+      btn.classList.remove('loading');
+    }
   } catch (err) {
     showToast('⚠ Could not add to cart: ' + err.message, 'error');
-  } finally {
     btn.classList.remove('loading');
   }
 }
