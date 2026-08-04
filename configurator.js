@@ -320,22 +320,11 @@ class MotorcycleConfigurator {
               // === ROOT-LEVEL BLOCKS ===
               // Hide entire root assemblies that are clearly not the YFZ 450R ATV
               const isFromBadRoot = (
-                // YZF 450F dirt bike body panels (same position as ATV, but bad data)
-                rootName === 'yamaha_yzf_450_2020.004' ||
-                rootName === 'yamaha_yzf_450_2020.005' ||
-                rootName === 'yamaha_yzf_450_2020.006' ||
-                rootName === 'yamaha_yzf_450_2020.007' ||
-                rootName === 'yamaha_yzf_450_2020.008' ||
-                rootName === 'yamaha_yzf_450_2020.009' ||
-                rootName === 'yamaha_yzf_450_2020.010' ||
-                rootName === 'yamaha_yzf_450_2020.001' ||
-                rootName === 'yamaha_yzf_450_2020.002' ||
-                rootName === 'yamaha_yzf_450_2020.003' ||
-                // Dirt bike shifted to right side
+                // Dirt bike shifted to right side (rx = 0.869)
                 rx > 0.6 ||
-                // Stickers/decals at wrong position
+                // Stickers/decals at wrong negative X position
                 rx < -0.3 ||
-                // Husqvarna and KTM
+                // Husqvarna and KTM separate vehicles
                 rootName.includes('husqvarna') ||
                 rootName.includes('ktm')
               );
@@ -370,9 +359,6 @@ class MotorcycleConfigurator {
                   return;
                 }
               }
-
-              // === NODE 276: Yamaha_YZF_450_2020.011 (Front shockabsorbers) ===
-              // This node provides real ATV front suspension parts — keep all of them.
 
               // === INDIVIDUAL MESH FILTERS ===
               // Misc floating/duplicate objects not caught by root filters
