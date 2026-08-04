@@ -205,11 +205,12 @@ class MotorcycleConfigurator {
 
   _setupDecalCanvas() {
     this.decalCanvas = document.createElement('canvas');
-    this.decalCanvas.width = 1024;
-    this.decalCanvas.height = 512;
+    this.decalCanvas.width = 2048;
+    this.decalCanvas.height = 2048;
     this.decalCtx = this.decalCanvas.getContext('2d');
     this.decalTexture = new THREE.CanvasTexture(this.decalCanvas);
     this.decalTexture.colorSpace = THREE.SRGBColorSpace;
+    this.decalTexture.flipY = false; // GLB UVs don't flip Y
   }
 
   _setupResizeObserver() {
@@ -304,6 +305,8 @@ class MotorcycleConfigurator {
           // Map meshes, set up materials
           this.model.traverse(obj => {
             const objName = (obj.name || '').toLowerCase();
+            const parentName = (obj.parent && obj.parent.name || '').toLowerCase();
+            const fullName = objName + ' ' + parentName;
             
             // Hide other vehicles (KTM, Husqvarna, YZF dirt bike) and floating duplicate parts
             if (modelConfig.id === 'yfz450r') {
@@ -363,9 +366,9 @@ class MotorcycleConfigurator {
               // Map zone to mesh (supporting substring and array matches)
               const matchedZones = modelConfig.colorZones.filter(z => {
                 if (Array.isArray(z.meshName)) {
-                  return z.meshName.some(name => obj.name.toLowerCase().includes(name.toLowerCase()));
+                  return z.meshName.some(name => fullName.includes(name.toLowerCase()));
                 }
-                return obj.name.toLowerCase().includes(z.meshName.toLowerCase());
+                return fullName.includes(z.meshName.toLowerCase());
               });
 
               matchedZones.forEach(zone => {
@@ -378,9 +381,9 @@ class MotorcycleConfigurator {
               // Decal mesh (supporting substring and array matches)
               let isDecal = false;
               if (Array.isArray(modelConfig.decalMesh)) {
-                isDecal = modelConfig.decalMesh.some(name => obj.name.toLowerCase().includes(name.toLowerCase()));
+                isDecal = modelConfig.decalMesh.some(name => fullName.includes(name.toLowerCase()));
               } else if (modelConfig.decalMesh) {
-                isDecal = obj.name.toLowerCase().includes(modelConfig.decalMesh.toLowerCase());
+                isDecal = fullName.includes(modelConfig.decalMesh.toLowerCase());
               }
 
               if (isDecal) {
@@ -643,6 +646,7 @@ class MotorcycleConfigurator {
         mat.needsUpdate = true;
       });
     }
+    this._redrawDecal();
   }
 
   _applyAllColors() {
@@ -665,119 +669,183 @@ class MotorcycleConfigurator {
   /* ----- DECAL / CANVAS TEXTURE ----- */
   _redrawDecal() {
     const ctx = this.decalCtx;
-    const w = this.decalCanvas.width;
-    const h = this.decalCanvas.height;
+    const W = this.decalCanvas.width;   // 2048
+    const H = this.decalCanvas.height;  // 2048
 
-    ctx.clearRect(0, 0, w, h);
-
-    // Draw the base graphic kit decals from the GLB model
-    if (this.originalDecalImage) {
-      ctx.drawImage(this.originalDecalImage, 0, 0, w, h);
-    }
+    ctx.clearRect(0, 0, W, H);
 
     const fontMap = {
-      bebas: "'Bebas Neue', Impact, sans-serif",
-      racing: "'Racing Sans One', Impact, sans-serif",
-      orbitron: "'Orbitron', sans-serif",
+      bebas:   "'Bebas Neue', Impact, sans-serif",
+      racing:  "'Racing Sans One', Impact, sans-serif",
+      orbitron:"'Orbitron', sans-serif",
       bangers: "'Bangers', cursive",
-      russo: "'Russo One', sans-serif",
+      russo:   "'Russo One', sans-serif",
     };
     const fontFamily = fontMap[state.nameFont] || fontMap.bebas;
 
-    if (state.modelId === 'yfz450r') {
-      // ── YFZ 450R CUSTOM MAPPING ──
-      
-      // 1. Draw on Side Plates (U: [0.25, 0.42] => X: [255, 429], V: [0.15, 0.85] => Y: [79, 432])
-      if (state.riderNumber) {
-        ctx.font = `bold 64px ${fontFamily}`;
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillStyle = state.numberColor || '#ffffff';
-        ctx.strokeStyle = 'rgba(0,0,0,0.85)';
-        ctx.lineWidth = 5;
-        ctx.strokeText(state.riderNumber, 342, 275);
-        ctx.fillText(state.riderNumber, 342, 275);
-      }
-      if (state.riderName) {
-        ctx.font = `bold 32px ${fontFamily}`;
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillStyle = state.nameColor || '#ffffff';
-        ctx.strokeStyle = 'rgba(0,0,0,0.85)';
-        ctx.lineWidth = 4;
-        ctx.strokeText(state.riderName.toUpperCase(), 342, 195);
-        ctx.fillText(state.riderName.toUpperCase(), 342, 195);
+    // ─── Derive colors from current state ───────────────────────────
+    const bodyColor   = state.colors.front_fender || state.colors.side_panels || '#0055aa';
+    const accent      = '#D4FF00';   // 4D brand yellow
+    const nameCol     = state.nameColor   || '#ffffff';
+    const numCol      = state.numberColor || '#ffffff';
+    const riderName   = (state.riderName  || '').toUpperCase();
+    const riderNumber = state.riderNumber || '';
+
+    // ─── Helper: draw a chevron stripe ──────────────────────────────
+    const chevron = (x, y, w, h, color, dir = 1) => {
+      ctx.fillStyle = color;
+      ctx.beginPath();
+      ctx.moveTo(x, y);
+      ctx.lineTo(x + w, y);
+      ctx.lineTo(x + w + dir * h * 0.4, y + h * 0.5);
+      ctx.lineTo(x + w, y + h);
+      ctx.lineTo(x, y + h);
+      ctx.lineTo(x + dir * h * 0.4, y + h * 0.5);
+      ctx.closePath();
+      ctx.fill();
+    };
+
+    // ─── Helper: draw outline text ───────────────────────────────────
+    const outlineText = (text, x, y, size, fill, outline, lw) => {
+      ctx.font = `bold ${size}px ${fontFamily}`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.lineWidth = lw;
+      ctx.strokeStyle = outline;
+      ctx.strokeText(text, x, y);
+      ctx.fillStyle = fill;
+      ctx.fillText(text, x, y);
+    };
+
+    // ================================================================
+    //  TILE THE GRAPHIC KIT ACROSS THE FULL 2048×2048 CANVAS
+    //  Using a 2-column × 2-row tile so it covers all UV sub-regions
+    // ================================================================
+    const tileW = W / 2;
+    const tileH = H / 2;
+
+    // Offsets for the 4 tiles (covers the whole UV space)
+    const tiles = [
+      { ox: 0,       oy: 0       },
+      { ox: tileW,   oy: 0       },
+      { ox: 0,       oy: tileH   },
+      { ox: tileW,   oy: tileH   },
+    ];
+
+    tiles.forEach(({ ox, oy }) => {
+      const tw = tileW;
+      const th = tileH;
+
+      // 1. Background: solid body color fills the tile
+      ctx.fillStyle = bodyColor;
+      ctx.fillRect(ox, oy, tw, th);
+
+      // 2. Top diagonal band (dark)
+      ctx.save();
+      ctx.beginPath();
+      ctx.moveTo(ox, oy);
+      ctx.lineTo(ox + tw, oy);
+      ctx.lineTo(ox + tw, oy + th * 0.3);
+      ctx.lineTo(ox, oy + th * 0.2);
+      ctx.closePath();
+      ctx.fillStyle = 'rgba(0,0,0,0.25)';
+      ctx.fill();
+      ctx.restore();
+
+      // 3. Bottom diagonal band (dark)
+      ctx.save();
+      ctx.beginPath();
+      ctx.moveTo(ox, oy + th * 0.75);
+      ctx.lineTo(ox + tw, oy + th * 0.65);
+      ctx.lineTo(ox + tw, oy + th);
+      ctx.lineTo(ox, oy + th);
+      ctx.closePath();
+      ctx.fillStyle = 'rgba(0,0,0,0.25)';
+      ctx.fill();
+      ctx.restore();
+
+      // 4. Chevron accent stripe cluster (mid-section)
+      const chH = th * 0.12;
+      const chY = oy + th * 0.38;
+      chevron(ox + tw * 0.05, chY,           tw * 0.88, chH, accent,               1);
+      chevron(ox + tw * 0.05, chY + chH * 1.2, tw * 0.88, chH * 0.6, 'rgba(0,0,0,0.3)', 1);
+
+      // 5. Thin accent line above and below chevron
+      ctx.strokeStyle = accent;
+      ctx.lineWidth = Math.max(2, th * 0.006);
+      ctx.beginPath();
+      ctx.moveTo(ox + tw * 0.05, chY - 4);
+      ctx.lineTo(ox + tw * 0.95, chY - 4);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(ox + tw * 0.05, chY + chH * 2.0 + 4);
+      ctx.lineTo(ox + tw * 0.95, chY + chH * 2.0 + 4);
+      ctx.stroke();
+
+      // 6. Number plate zone (white rounded rect, right 40% of tile)
+      const npX = ox + tw * 0.55;
+      const npY = oy + th * 0.15;
+      const npW = tw * 0.38;
+      const npH = th * 0.55;
+      const r   = npW * 0.12;
+      ctx.fillStyle = 'rgba(255,255,255,0.92)';
+      ctx.beginPath();
+      ctx.moveTo(npX + r, npY);
+      ctx.lineTo(npX + npW - r, npY);
+      ctx.quadraticCurveTo(npX + npW, npY, npX + npW, npY + r);
+      ctx.lineTo(npX + npW, npY + npH - r);
+      ctx.quadraticCurveTo(npX + npW, npY + npH, npX + npW - r, npY + npH);
+      ctx.lineTo(npX + r, npY + npH);
+      ctx.quadraticCurveTo(npX, npY + npH, npX, npY + npH - r);
+      ctx.lineTo(npX, npY + r);
+      ctx.quadraticCurveTo(npX, npY, npX + r, npY);
+      ctx.closePath();
+      ctx.fill();
+
+      // Number plate border
+      ctx.strokeStyle = bodyColor;
+      ctx.lineWidth = Math.max(2, tw * 0.008);
+      ctx.stroke();
+
+      // 7. Rider number inside number plate
+      if (riderNumber) {
+        outlineText(
+          riderNumber,
+          npX + npW * 0.5,
+          npY + npH * 0.55,
+          Math.round(npH * 0.55),
+          numCol === '#ffffff' ? bodyColor : numCol,
+          'rgba(0,0,0,0.15)',
+          2
+        );
       }
 
-      // 2. Draw on Front Hood / Nose (U: [0.38, 0.78] => X: [387, 795], V: [0.06, 0.93] => Y: [33, 478])
-      if (state.riderNumber) {
-        ctx.font = `bold 96px ${fontFamily}`;
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillStyle = state.numberColor || '#ffffff';
-        ctx.strokeStyle = 'rgba(0,0,0,0.85)';
-        ctx.lineWidth = 7;
-        ctx.strokeText(state.riderNumber, 591, 310);
-        ctx.fillText(state.riderNumber, 591, 310);
+      // 8. Rider name (left of number plate, in middle band)
+      if (riderName) {
+        const nameSize = Math.round(th * 0.08);
+        outlineText(
+          riderName,
+          ox + tw * 0.28,
+          oy + th * 0.47,
+          nameSize,
+          nameCol,
+          'rgba(0,0,0,0.7)',
+          Math.max(2, nameSize * 0.12)
+        );
       }
-      if (state.riderName) {
-        ctx.font = `bold 44px ${fontFamily}`;
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillStyle = state.nameColor || '#ffffff';
-        ctx.strokeStyle = 'rgba(0,0,0,0.85)';
-        ctx.lineWidth = 5;
-        ctx.strokeText(state.riderName.toUpperCase(), 591, 205);
-        ctx.fillText(state.riderName.toUpperCase(), 591, 205);
-      }
+
+      // 9. Logo (if selected)
       if (state.logoImage) {
-        // Draw logo on the front hood (below the number)
-        ctx.drawImage(state.logoImage, 541, 370, 100, 70);
-        
-        // Also draw logo on the side plates (below the number)
-        ctx.drawImage(state.logoImage, 302, 335, 80, 56);
+        const logoW = tw * 0.22;
+        const logoH = logoW * 0.6;
+        ctx.drawImage(
+          state.logoImage,
+          ox + tw * 0.06,
+          oy + th * 0.08,
+          logoW, logoH
+        );
       }
-
-    } else {
-      // ── DRZ 400SM DEFAULT MAPPING ──
-      // Background stripe
-      const grd = ctx.createLinearGradient(0, 0, w, 0);
-      grd.addColorStop(0, 'rgba(0,0,0,0)');
-      grd.addColorStop(0.3, 'rgba(0,0,0,0.6)');
-      grd.addColorStop(0.7, 'rgba(0,0,0,0.6)');
-      grd.addColorStop(1, 'rgba(0,0,0,0)');
-      ctx.fillStyle = grd;
-      ctx.fillRect(0, h * 0.2, w, h * 0.6);
-
-      // Rider name
-      if (state.riderName) {
-        ctx.font = `bold 130px ${fontFamily}`;
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillStyle = state.nameColor || '#ffffff';
-        // Outline
-        ctx.strokeStyle = 'rgba(0,0,0,0.7)';
-        ctx.lineWidth = 8;
-        ctx.strokeText(state.riderName.toUpperCase(), w * 0.5, h * 0.42);
-        ctx.fillText(state.riderName.toUpperCase(), w * 0.5, h * 0.42);
-      }
-
-      // Rider number
-      if (state.riderNumber) {
-        ctx.font = `bold 160px ${fontFamily}`;
-        ctx.textAlign = 'right';
-        ctx.fillStyle = state.numberColor || '#ffffff';
-        ctx.strokeStyle = 'rgba(0,0,0,0.7)';
-        ctx.lineWidth = 10;
-        ctx.strokeText(state.riderNumber, w * 0.92, h * 0.68);
-        ctx.fillText(state.riderNumber, w * 0.92, h * 0.68);
-      }
-
-      // Logo
-      if (state.logoImage) {
-        ctx.drawImage(state.logoImage, 30, h * 0.2, 120, 120);
-      }
-    }
+    });
 
     this.decalTexture.needsUpdate = true;
   }
