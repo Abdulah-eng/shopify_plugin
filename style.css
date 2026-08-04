@@ -573,9 +573,78 @@ input, select, textarea { font-family: inherit; }
 @keyframes toastOut { to { opacity: 0; transform: translateY(10px); } }
 
 /* ── RESPONSIVE ── */
-@media (max-width: 640px) {
-  :root { --strip-w: 60px; --panel-w: 280px; }
-  .strip-model-name { font-size: 11px; }
-  .strip-price { font-size: 9px; }
-  .strip-cart-btn span, .strip-save-btn span { display: none; }
+@media (max-width: 900px) {
+  #app { flex-direction: column; }
+  
+  #viewer-container {
+    width: 100%;
+    height: 45vh;
+    flex: none;
+    order: -1; /* Puts viewer at the top */
+  }
+
+  #left-strip {
+    width: 100%;
+    height: auto;
+    flex-direction: row;
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+    padding: 8px 12px;
+    overflow-x: auto;
+    align-items: center;
+    scrollbar-width: none; 
+    order: 0;
+  }
+  #left-strip::-webkit-scrollbar { display: none; }
+
+  .strip-brand { display: none; }
+  
+  .strip-product-card {
+    width: auto;
+    margin: 0 12px 0 0;
+    padding: 6px 12px;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+  }
+  .strip-model-name { font-size: 12px; }
+  .strip-price { margin-top: 0; font-size: 11px; }
+  .strip-product-sub { display: none; }
+  
+  .strip-cart-btn, .strip-save-btn {
+    width: auto;
+    flex-direction: row;
+    margin: 0 8px 0 0;
+    padding: 8px 16px;
+    flex-shrink: 0;
+  }
+  .strip-cart-btn span, .strip-save-btn span { display: block; margin-left: 6px; font-size: 10px; margin-top: 0; }
+
+  .strip-divider {
+    width: 1px; height: 24px; margin: 0 12px 0 4px; flex-shrink: 0;
+  }
+
+  .icon-nav {
+    flex-direction: row;
+    padding: 0;
+    justify-content: flex-start;
+  }
+  .icon-tab {
+    width: auto;
+    padding: 8px 16px;
+    flex-direction: row;
+    flex-shrink: 0;
+  }
+  .icon-tab span { font-size: 10px; margin-left: 6px; }
+
+  .strip-bottom { display: none; }
+
+  #panel-container {
+    width: 100%;
+    flex: 1;
+    border-right: none;
+    order: 1;
+  }
 }
