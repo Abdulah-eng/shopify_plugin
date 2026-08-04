@@ -310,6 +310,12 @@ class MotorcycleConfigurator {
             
             // Hide other vehicles (KTM, Husqvarna, YZF dirt bike) and floating duplicate parts
             if (modelConfig.id === 'yfz450r') {
+              let rootNode = obj;
+              while (rootNode.parent && rootNode.parent !== this.model) {
+                rootNode = rootNode.parent;
+              }
+              const rx = rootNode.position.x;
+
               const isToHide = (
                 objName === 'frame_chrome_f18' ||
                 objName === 'yamaha_f' ||
@@ -328,13 +334,9 @@ class MotorcycleConfigurator {
                 objName === 'plane' ||
                 (objName.startsWith('plane.') && !objName.includes('.006') && !objName.includes('.007') && !objName.includes('.008') && !objName.includes('.009')) ||
                 objName.includes('render.') ||
-                // Stray Blender default objects from Husqvarna/KTM scene
-                // (YFZ 450R parts all have descriptive prefixed names - never generic names)
-                /^cylinder(\.\d+)?$/.test(objName) ||
-                /^circle(\.\d+)?$/.test(objName) ||
-                /^cube(\.\d+)?$/.test(objName) ||
-                /^bolt(\.\d+)?$/.test(objName) ||
-                objName === 'hex nut' ||
+                // Spatial filter: hide any mesh belonging to a root node shifted to other vehicles
+                rx < -0.3 || 
+                rx > 0.6 ||
                 // Duplicate handlebar sets from Husqvarna/KTM (all end in .001)
                 // The real YFZ 450R handlebars don't have the .001 suffix
                 (objName.startsWith('handlebar_') && objName.endsWith('.001')) ||
