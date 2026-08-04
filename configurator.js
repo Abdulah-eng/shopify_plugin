@@ -351,17 +351,8 @@ class MotorcycleConfigurator {
               obj.receiveShadow = true;
               this.meshMap[obj.name] = obj;
 
-              // Upgrade material to physical
               const oldMat = obj.material;
-              obj.material = new THREE.MeshPhysicalMaterial({
-                color: oldMat.color || new THREE.Color(0xffffff),
-                map: oldMat.map || null,
-                normalMap: oldMat.normalMap || null,
-                roughness: oldMat.roughness !== undefined ? oldMat.roughness : 0.5,
-                metalness: oldMat.metalness !== undefined ? oldMat.metalness : 0.3,
-                clearcoat: 0.5,
-                clearcoatRoughness: 0.1,
-              });
+              const fullName = obj.name.toLowerCase();
 
               // Map zone to mesh (supporting substring and array matches)
               const matchedZones = modelConfig.colorZones.filter(z => {
@@ -371,12 +362,26 @@ class MotorcycleConfigurator {
                 return fullName.includes(z.meshName.toLowerCase());
               });
 
-              matchedZones.forEach(zone => {
-                if (!this.zoneMaterials[zone.id]) {
-                  this.zoneMaterials[zone.id] = [];
-                }
-                this.zoneMaterials[zone.id].push(obj.material);
-              });
+              if (matchedZones.length > 0) {
+                obj.material = new THREE.MeshPhysicalMaterial({
+                  color: oldMat.color || new THREE.Color(0xffffff),
+                  map: oldMat.map || null,
+                  normalMap: oldMat.normalMap || null,
+                  roughness: oldMat.roughness !== undefined ? oldMat.roughness : 0.2,
+                  metalness: oldMat.metalness !== undefined ? oldMat.metalness : 0.1,
+                  clearcoat: 0.9,
+                  clearcoatRoughness: 0.05,
+                  transparent: oldMat.transparent || false,
+                  opacity: oldMat.opacity !== undefined ? oldMat.opacity : 1.0,
+                });
+
+                matchedZones.forEach(zone => {
+                  if (!this.zoneMaterials[zone.id]) {
+                    this.zoneMaterials[zone.id] = [];
+                  }
+                  this.zoneMaterials[zone.id].push(obj.material);
+                });
+              }
 
               // Decal mesh (supporting substring and array matches)
               let isDecal = false;
@@ -393,8 +398,12 @@ class MotorcycleConfigurator {
                 obj.material = new THREE.MeshStandardMaterial({
                   map: this.decalTexture,
                   transparent: true,
-                  roughness: 0.6,
+                  roughness: 0.5,
                   metalness: 0.1,
+                  polygonOffset: true,
+                  polygonOffsetFactor: -4,
+                  polygonOffsetUnits: -4,
+                  depthWrite: true,
                 });
               }
             }
