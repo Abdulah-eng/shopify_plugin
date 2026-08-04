@@ -280,14 +280,43 @@
       }, '*');
     }
 
+    if (data.type === '4d:trigger-add-to-cart') {
+      var payload = data.payload;
+      fetch(window.Shopify.routes && window.Shopify.routes.root ? window.Shopify.routes.root + 'cart/add.js' : '/cart/add.js', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          items: [{
+            id: payload.id,
+            quantity: payload.quantity || 1,
+            properties: payload.properties || {}
+          }]
+        })
+      })
+      .then(function(response) {
+        return response.json();
+      })
+      .then(function() {
+        // Send success back to iframe if needed, or just handle UI
+        iframe.contentWindow.postMessage({ type: '4d:cart-added' }, '*');
+      })
+      .catch(function(error) {
+        console.error('Error adding to cart:', error);
+      });
+    }
+
     if (data.type === '4d:cart-added') {
-      // Cart was updated from within configurator
+      // Cart was updated
       closeModal();
-      // Trigger theme cart refresh
       document.dispatchEvent(new CustomEvent('cart:refresh', { bubbles: true }));
-      // Try to open cart drawer (common pattern)
       var cartDrawerTrigger = document.querySelector('[data-cart-drawer-trigger], .js-cart-trigger, #cart-icon-bubble');
       if (cartDrawerTrigger) cartDrawerTrigger.click();
+    }
+    
+    if (data.type === '4d:view-cart') {
+      window.location.href = '/cart';
     }
   });
 })();

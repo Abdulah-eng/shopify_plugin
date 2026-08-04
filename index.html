@@ -433,7 +433,7 @@
     </div>
     <div class="modal-btns">
       <button class="modal-btn secondary" id="modal-close">Keep Customizing</button>
-      <a href="/cart" class="modal-btn primary" id="modal-view-cart">View Cart →</a>
+      <a href="#" onclick="window.parent.postMessage({type: '4d:view-cart'}, '*'); return false;" class="modal-btn primary" id="modal-view-cart">View Cart →</a>
     </div>
   </div>
 </div>
