@@ -1264,19 +1264,15 @@ async function addToCart() {
   };
 
   try {
-    // Check if we're inside Shopify context
-    if (window.Shopify || window.location.hostname.includes('myshopify.com')) {
-      await window.shopifyCartIntegration.addToCart({
-        variantId: state.modelConfig.shopifyVariantId,
-        quantity: 1,
-        properties,
-        previewDataUrl,
-      });
-    } else {
-      // Demo mode: show success modal
-      await new Promise(r => setTimeout(r, 1200));
-      showSuccessModal(properties);
-    }
+    const urlParams = new URLSearchParams(window.location.search);
+    const variantId = urlParams.get('variant') || state.modelConfig.shopifyVariantId;
+
+    await window.shopifyCartIntegration.addToCart({
+      variantId: variantId,
+      quantity: 1,
+      properties,
+      previewDataUrl,
+    });
   } catch (err) {
     showToast('⚠ Could not add to cart: ' + err.message, 'error');
   } finally {
