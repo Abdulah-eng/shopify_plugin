@@ -317,19 +317,12 @@ class MotorcycleConfigurator {
               const rx = rootNode.position.x;
 
               const isToHide = (
-                objName === 'frame_chrome_f18' ||
-                objName === 'yamaha_f' ||
-                objName === 'handlebar_chrome00' ||
-                objName === 'handles00' ||
-                objName === 'handles01' ||
-                objName === 'red_part' ||
                 objName.includes('yamaha_yzf_450_2020.001') ||
                 objName.includes('yamaha_yzf_450_2020.002') ||
                 objName.includes('yamaha_yzf_450_2020.003') ||
                 objName.includes('yamaha_yzf_450_2020.005') ||
                 objName.includes('husqvarna') || 
                 objName.includes('ktm') || 
-                objName.includes('rim_second') ||
                 objName === 'plano' ||
                 objName === 'plane' ||
                 (objName.startsWith('plane.') && !objName.includes('.006') && !objName.includes('.007') && !objName.includes('.008') && !objName.includes('.009')) ||
