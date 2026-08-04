@@ -1265,7 +1265,7 @@ async function addToCart() {
 
   try {
     const urlParams = new URLSearchParams(window.location.search);
-    const variantId = urlParams.get('variantId') || urlParams.get('variant') || state.modelConfig.shopifyVariantId;
+    const variantId = urlParams.get('variant') || state.modelConfig.shopifyVariantId;
 
     await window.shopifyCartIntegration.addToCart({
       variantId: variantId,

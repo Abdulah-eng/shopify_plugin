@@ -297,25 +297,25 @@
       })
       .then(function(response) {
         return response.json().then(function(json) {
-          if (!response.ok) {
+          if (response.ok) {
+            iframe.contentWindow.postMessage({ type: '4d:cart-added' }, '*');
+          } else {
             console.error('[4D] Cart add failed:', json.description || json.message || JSON.stringify(json));
             iframe.contentWindow.postMessage({ type: '4d:cart-error', error: json.description || 'Cart error' }, '*');
-            throw new Error(json.description || 'Cart error');
           }
         });
       })
-      .then(function() {
-        // Refresh the cart drawer on Shopify
-        document.dispatchEvent(new CustomEvent('cart:refresh', { bubbles: true }));
-        var cartDrawerTrigger = document.querySelector('[data-cart-drawer-trigger], .js-cart-trigger, #cart-icon-bubble');
-        if (cartDrawerTrigger) cartDrawerTrigger.click();
-
-        // Send success back to iframe so it shows the success modal
-        iframe.contentWindow.postMessage({ type: '4d:cart-added' }, '*');
-      })
       .catch(function(error) {
-        console.error('Error adding to cart:', error);
+        console.error('[4D] Cart fetch error:', error);
       });
+    }
+
+    if (data.type === '4d:cart-added') {
+      // Cart was updated
+      closeModal();
+      document.dispatchEvent(new CustomEvent('cart:refresh', { bubbles: true }));
+      var cartDrawerTrigger = document.querySelector('[data-cart-drawer-trigger], .js-cart-trigger, #cart-icon-bubble');
+      if (cartDrawerTrigger) cartDrawerTrigger.click();
     }
     
     if (data.type === '4d:view-cart') {
