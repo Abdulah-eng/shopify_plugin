@@ -140,11 +140,10 @@
       // Parent is triggering cart add
       window.configurator4D?.addToCart?.();
     }
-
+    
     if (type === '4d:cart-added') {
-      // Shopify parent confirmed cart was successfully updated — show success modal
-      const modal = document.getElementById('success-modal');
-      if (modal) modal.classList.remove('hidden');
+      // Shopify parent confirmed cart was successfully updated      // The success modal will be shown by the '4d:cart-added' message listener
+      // when the Shopify parent confirms the item was successfully added.
       const btn = document.getElementById('btn-add-cart');
       if (btn) btn.classList.remove('loading');
     }
