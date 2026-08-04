@@ -38,37 +38,20 @@
         properties: cleanProps,
       };
 
-      // Shopify AJAX Cart API
-      const response = await fetch('/cart/add.js', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-        },
-        body: JSON.stringify(payload),
-      });
-
-      if (!response.ok) {
-        const err = await response.json().catch(() => ({}));
-        throw new Error(err.description || `Cart error: ${response.status}`);
+      if (window.parent !== window) {
+        window.parent.postMessage({
+          type: '4d:trigger-add-to-cart',
+          payload: payload
+        }, '*');
+      } else {
+        console.log("Mock add to cart:", payload);
       }
 
-      const result = await response.json();
-
-      // Trigger cart update event (for themes with AJAX cart drawers)
-      document.dispatchEvent(new CustomEvent('cart:add', {
-        bubbles: true,
-        detail: { item: result, properties: cleanProps },
-      }));
-
-      // Update cart count badge in Shopify theme if present
-      this._updateCartCount();
-
-      // Show success modal
+      // Show success modal locally
       const modal = document.getElementById('success-modal');
       if (modal) modal.classList.remove('hidden');
 
-      return result;
+      return payload;
     },
 
     /**
