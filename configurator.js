@@ -314,38 +314,85 @@ class MotorcycleConfigurator {
               while (rootNode.parent && rootNode.parent !== this.model) {
                 rootNode = rootNode.parent;
               }
+              const rootName = (rootNode.name || '').toLowerCase();
               const rx = rootNode.position.x;
 
+              // === ROOT-LEVEL BLOCKS ===
+              // Hide entire root assemblies that are clearly not the YFZ 450R ATV
+              const isFromBadRoot = (
+                // YZF 450F dirt bike body panels (same position as ATV, but bad data)
+                rootName === 'yamaha_yzf_450_2020.004' ||
+                rootName === 'yamaha_yzf_450_2020.005' ||
+                rootName === 'yamaha_yzf_450_2020.006' ||
+                rootName === 'yamaha_yzf_450_2020.007' ||
+                rootName === 'yamaha_yzf_450_2020.008' ||
+                rootName === 'yamaha_yzf_450_2020.009' ||
+                rootName === 'yamaha_yzf_450_2020.010' ||
+                rootName === 'yamaha_yzf_450_2020.001' ||
+                rootName === 'yamaha_yzf_450_2020.002' ||
+                rootName === 'yamaha_yzf_450_2020.003' ||
+                // Dirt bike shifted to right side
+                rx > 0.6 ||
+                // Stickers/decals at wrong position
+                rx < -0.3 ||
+                // Husqvarna and KTM
+                rootName.includes('husqvarna') ||
+                rootName.includes('ktm')
+              );
+
+              if (isFromBadRoot) {
+                obj.visible = false;
+                if (obj.isMesh) { obj.castShadow = false; obj.receiveShadow = false; }
+                return;
+              }
+
+              // === NODE 359: Yamaha_YZF_450_2020.013 (Mixed ATV/Dirtbike handlebar group) ===
+              // This node contains BOTH real ATV handlebar tubes AND dirt bike handlebar parts.
+              // Whitelist only the real ATV parts; hide everything else in this group.
+              if (rootName === 'yamaha_yzf_450_2020.013') {
+                const ATV_HANDLEBAR_WHITELIST = new Set([
+                  'black_tubes_handlebar00',
+                  'black_tubes_handlebar01',
+                  'black_tubes_handlebar02',
+                  'black_tubes_handlebar03',
+                  'black_tubes_handlebar04',
+                  'black_tubes_handlebar05',
+                  'black_tubes_handlebar05.002',
+                  'black_tubes_handlebar06',
+                  'black_tubes_handlebar07',
+                  'handles00',
+                  'handles01',
+                  'handlebar_chrome00',
+                ]);
+                if (!ATV_HANDLEBAR_WHITELIST.has(objName)) {
+                  obj.visible = false;
+                  if (obj.isMesh) { obj.castShadow = false; obj.receiveShadow = false; }
+                  return;
+                }
+              }
+
+              // === NODE 276: Yamaha_YZF_450_2020.011 (Front shockabsorbers) ===
+              // This node provides real ATV front suspension parts — keep all of them.
+
+              // === INDIVIDUAL MESH FILTERS ===
+              // Misc floating/duplicate objects not caught by root filters
               const isToHide = (
-                objName.includes('yamaha_yzf_450_2020.001') ||
-                objName.includes('yamaha_yzf_450_2020.002') ||
-                objName.includes('yamaha_yzf_450_2020.003') ||
-                objName.includes('yamaha_yzf_450_2020.005') ||
-                objName.includes('husqvarna') || 
-                objName.includes('ktm') || 
                 objName === 'plano' ||
                 objName === 'plane' ||
                 (objName.startsWith('plane.') && !objName.includes('.006') && !objName.includes('.007') && !objName.includes('.008') && !objName.includes('.009')) ||
                 objName.includes('render.') ||
-                // Spatial filter: hide any mesh belonging to a root node shifted to other vehicles
-                rx < -0.3 || 
-                rx > 0.6 ||
-                // Duplicate handlebar sets from Husqvarna/KTM (all end in .001)
-                // The real YFZ 450R handlebars don't have the .001 suffix
-                (objName.startsWith('handlebar_') && objName.endsWith('.001')) ||
-                (objName.startsWith('black_tubes_handlebar') && objName.endsWith('.001')) ||
-                (objName.startsWith('grey_handlebar_') && objName.endsWith('.001')) ||
-                (objName.startsWith('handles0') && objName.endsWith('.001')) ||
-                objName === 'handlebar_chrome01.001' ||
-                objName === 'handle.002'
+                objName === 'handle.002' ||
+                // Stray Blender helper geometry (only if direct scene roots)
+                (rootName === objName && /^cylinder(\.\d+)?$/.test(objName)) ||
+                (rootName === objName && /^circle(\.\d+)?$/.test(objName)) ||
+                (rootName === objName && /^cube(\.\d+)?$/.test(objName)) ||
+                (rootName === objName && /^bolt(\.\d+)?$/.test(objName)) ||
+                objName === 'hex nut'
               );
-              
+
               if (isToHide) {
                 obj.visible = false;
-                if (obj.isMesh) {
-                  obj.castShadow = false;
-                  obj.receiveShadow = false;
-                }
+                if (obj.isMesh) { obj.castShadow = false; obj.receiveShadow = false; }
                 return;
               }
             }
