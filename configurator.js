@@ -733,6 +733,44 @@ class MotorcycleConfigurator {
   }
 }
 
+async function selectModel(modelId) {
+  const modelConfig = MODELS_CONFIG.models.find(m => m.id === modelId);
+  if (!modelConfig) return;
+
+  state.modelId = modelId;
+  state.modelConfig = modelConfig;
+
+  // Set price in left badge
+  const priceEl = document.getElementById('price-value');
+  if (priceEl) {
+    priceEl.textContent = modelConfig.currency + ' ' + modelConfig.price.toLocaleString();
+  }
+  // Update model name in left badge
+  const badgeName = document.getElementById('product-model-name');
+  if (badgeName) badgeName.textContent = modelConfig.name;
+
+  // Load 3D model
+  setLoadingProgress(10, 'Loading model…');
+  
+  // If personalization gate is hidden, show overlay, otherwise do it silently
+  const gate = document.getElementById('gate-container');
+  const isGateVisible = gate && !gate.classList.contains('hidden');
+  if (!isGateVisible) {
+    showLoadingOverlay(true);
+  }
+
+  await configurator.loadModel(modelConfig, (pct) => {
+    setLoadingProgress(pct, pct < 90 ? 'Downloading 3D model…' : 'Setting up materials…');
+  });
+
+  setLoadingProgress(100, 'Ready!');
+  if (!isGateVisible) {
+    setTimeout(() => showLoadingOverlay(false), 400);
+  }
+
+  showToast('🏍 ' + modelConfig.name + ' loaded', 'success');
+}
+
 /* ============================================================
    BOTTOM WINDOW CUSTOM DYNAMIC BUILDERS
    ============================================================ */
