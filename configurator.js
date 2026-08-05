@@ -257,7 +257,7 @@ class MotorcycleConfigurator {
     loader.setDRACOLoader(draco);
 
     this.isLoading = true;
-    const modelUrl = `./models/${modelConfig.id}/${modelConfig.file}`;
+    const modelUrl = './' + modelConfig.glb;
 
     const loadGLB = () => new Promise((resolve) => {
       loader.load(
