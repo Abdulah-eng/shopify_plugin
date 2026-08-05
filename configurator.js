@@ -306,6 +306,8 @@ class MotorcycleConfigurator {
                   'yamaha_yzf_450_2020.017', 'yamaha_yzf_450_2020.018',
                   'new graphic', // mispositioned decals
                   'sticker.001',
+                  'sticker.002',
+                  'sticker.003',
                 ]);
 
               const isToHide = (
