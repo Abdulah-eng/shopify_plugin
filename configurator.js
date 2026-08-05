@@ -8,6 +8,7 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { RGBELoader } from 'three/addons/loaders/RGBELoader.js';
+import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
 
 
 /* ============================================================
@@ -62,6 +63,7 @@ class MotorcycleConfigurator {
     this.scene = null;
     this.camera = null;
     this.renderer = null;
+    this.labelRenderer = null;  // CSS2DRenderer for plate labels
     this.controls = null;
     this.model = null;
     this.meshMap = {};       // meshName -> THREE.Mesh
@@ -69,6 +71,7 @@ class MotorcycleConfigurator {
     this.decalCanvas = null;
     this.decalCtx = null;
     this.decalTexture = null;
+    this.plateLabels = {};   // { front, left, right } -> CSS2DObject
     this.autoRotate = true;
     this.autoRotateTimer = null;
     this.animFrameId = null;
@@ -78,6 +81,7 @@ class MotorcycleConfigurator {
 
   init() {
     this._setupRenderer();
+    this._setupLabelRenderer();
     this._setupScene();
     this._setupCamera();
     this._setupLights();
@@ -101,6 +105,21 @@ class MotorcycleConfigurator {
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
     this.renderer.toneMappingExposure = 1.2;
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
+  }
+
+  _setupLabelRenderer() {
+    this.labelRenderer = new CSS2DRenderer();
+    const parent = this.canvas.parentElement;
+    const w = parent ? parent.clientWidth : this.canvas.offsetWidth;
+    const h = parent ? parent.clientHeight : this.canvas.offsetHeight;
+    this.labelRenderer.setSize(w, h);
+    this.labelRenderer.domElement.style.position = 'absolute';
+    this.labelRenderer.domElement.style.top = '0';
+    this.labelRenderer.domElement.style.left = '0';
+    this.labelRenderer.domElement.style.pointerEvents = 'none';
+    this.labelRenderer.domElement.style.overflow = 'hidden';
+    // Insert into the same parent as the canvas
+    (parent || document.body).appendChild(this.labelRenderer.domElement);
   }
 
   _setupScene() {
@@ -232,6 +251,7 @@ class MotorcycleConfigurator {
     this.camera.aspect = w / h;
     this.camera.updateProjectionMatrix();
     this.renderer.setSize(w, h);
+    if (this.labelRenderer) this.labelRenderer.setSize(w, h);
   }
 
   _animate() {
@@ -239,6 +259,9 @@ class MotorcycleConfigurator {
     if (this.controls) this.controls.update();
     if (this.renderer && this.scene && this.camera) {
       this.renderer.render(this.scene, this.camera);
+    }
+    if (this.labelRenderer && this.scene && this.camera) {
+      this.labelRenderer.render(this.scene, this.camera);
     }
   }
 
@@ -349,6 +372,47 @@ class MotorcycleConfigurator {
 
             if (obj.isMesh) {
               const fullName = obj.name.toLowerCase();
+              if (fullName.includes('new graphic')) {
+                const geom = obj.geometry;
+                if (geom && geom.attributes.position && geom.attributes.uv) {
+                  const pos = geom.attributes.position;
+                  const uv = geom.attributes.uv;
+                  obj.updateMatrixWorld(true);
+                  
+                  let leftWingUVs = [];
+                  let rightWingUVs = [];
+                  
+                  for (let i = 0; i < pos.count; i++) {
+                    const localV = new THREE.Vector3(pos.getX(i), pos.getY(i), pos.getZ(i));
+                    const worldV = localV.clone().applyMatrix4(obj.matrixWorld);
+                    
+                    if (worldV.z < -0.3 && worldV.y > 0.5) {
+                      const u = uv.getX(i);
+                      const v = uv.getY(i);
+                      if (worldV.x > 0.2) {
+                        leftWingUVs.push({ u, v });
+                      } else if (worldV.x < -0.2) {
+                        rightWingUVs.push({ u, v });
+                      }
+                    }
+                  }
+                  
+                  const getBounds = (uvs) => {
+                    let minU = Infinity, maxU = -Infinity;
+                    let minV = Infinity, maxV = -Infinity;
+                    uvs.forEach(({ u, v }) => {
+                      if (u < minU) minU = u;
+                      if (u > maxU) maxU = u;
+                      if (v < minV) minV = v;
+                      if (v > maxV) maxV = v;
+                    });
+                    return { minU, maxU, minV, maxV };
+                  };
+                  
+                  console.log('[WING-INSPECT] Left Wing UV bounds:', getBounds(leftWingUVs));
+                  console.log('[WING-INSPECT] Right Wing UV bounds:', getBounds(rightWingUVs));
+                }
+              }
               obj.castShadow = true;
               obj.receiveShadow = true;
               this.meshMap[obj.name] = obj;
@@ -704,7 +768,6 @@ class MotorcycleConfigurator {
       ctx.drawImage(state.logoImage, tileW * 0.1, tileH * 0.1, logoW, logoH);
       ctx.drawImage(state.logoImage, tileW * 1.1, tileH * 0.1, logoW, logoH);
     }
-
     this.decalTexture.needsUpdate = true;
 
     // Mirror decalCanvas to the 2D layout preview panel in top right
@@ -714,6 +777,109 @@ class MotorcycleConfigurator {
       previewCtx.clearRect(0, 0, previewCanvas.width, previewCanvas.height);
       previewCtx.drawImage(this.decalCanvas, 0, 0, previewCanvas.width, previewCanvas.height);
     }
+
+    // Update CSS2D plate labels anchored to 3D mesh positions
+    this._updatePlateLabels();
+  }
+
+  /* ----- CSS2D PLATE LABELS (number + name overlaid on 3D model) ----- */
+  _updatePlateLabels() {
+    if (!this.scene || !this.model) return;
+
+    const fontMap = {
+      bebas:   "'Bebas Neue', Impact, sans-serif",
+      racing:  "'Racing Sans One', Impact, sans-serif",
+      orbitron:"'Orbitron', sans-serif",
+      bangers: "'Bangers', cursive",
+      russo:   "'Russo One', sans-serif",
+    };
+
+    // plate mesh name -> state plate key
+    const plateMapping = {
+      'text_plate01': 'front',  // front panel (Z positive, higher up)
+      'text_plate00': 'right',  // right side fender
+      'text_plate02': 'left',   // left side fender
+    };
+
+    // Remove old labels
+    Object.values(this.plateLabels).forEach(lbl => {
+      if (lbl.parent) lbl.parent.remove(lbl);
+      lbl.element.remove();
+    });
+    this.plateLabels = {};
+
+    // Build labels on each plate mesh
+    this.model.traverse(obj => {
+      if (!obj.isMesh) return;
+      const nm = obj.name.toLowerCase();
+      let plateKey = null;
+      for (const [meshName, key] of Object.entries(plateMapping)) {
+        if (nm.includes(meshName)) { plateKey = key; break; }
+      }
+      if (!plateKey) return;
+
+      const p = state.plates[plateKey];
+      const riderNum = p.number || state.riderNumber || '333';
+      const riderName = (state.riderName || '').toUpperCase();
+      const fontFamily = fontMap[p.font] || fontMap.bebas;
+      const color = p.color || '#000000';
+      const strokeColor = p.strokeColor || '#ffffff';
+      const isFront = plateKey === 'front';
+      const isLeft = plateKey === 'left';
+
+      // Build the HTML label
+      const div = document.createElement('div');
+      div.className = 'plate-label-3d';
+      div.style.cssText = [
+        'position: relative',
+        'pointer-events: none',
+        'user-select: none',
+        'text-align: center',
+        'line-height: 1',
+        'white-space: nowrap',
+        // Rotate side labels to run horizontally along the fender (front-to-back)
+        `transform: rotate(${isFront ? '0deg' : (isLeft ? '-90deg' : '90deg')})`,
+        'transform-origin: center center',
+      ].join(';');
+
+      // White plate background
+      div.innerHTML = `
+        <div style="
+          background: rgba(255,255,255,0.88);
+          border: 3px solid ${color};
+          border-radius: 8px;
+          padding: 4px 10px 6px;
+          display: inline-block;
+          position: relative;
+        ">
+          ${riderName ? `<div style="
+            font-family: ${fontFamily};
+            font-weight: bold;
+            font-size: 11px;
+            color: ${color};
+            letter-spacing: 1px;
+            margin-bottom: 0px;
+            text-align: ${isFront ? 'left' : 'center'};
+          ">${riderName}</div>` : ''}
+          <div style="
+            font-family: ${fontFamily};
+            font-weight: bold;
+            font-size: 32px;
+            color: ${color};
+            -webkit-text-stroke: 2px ${strokeColor};
+            letter-spacing: 2px;
+            line-height: 1;
+          ">${riderNum}</div>
+        </div>
+      `;
+
+      const label = new CSS2DObject(div);
+      label.center.set(0.5, 0.5);
+
+      // Attach label to the mesh so it moves with the model
+      obj.add(label);
+      this.plateLabels[plateKey] = label;
+    });
   }
 
   setRiderName(name) {
