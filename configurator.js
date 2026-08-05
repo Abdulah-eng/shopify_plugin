@@ -263,49 +263,50 @@ class MotorcycleConfigurator {
       loader.load(
         modelUrl,
         (gltf) => {
-          this.model = gltf.scene;
-          this.model.scale.setScalar(modelConfig.scale || 1);
+          try {
+            this.model = gltf.scene;
+            this.model.scale.setScalar(modelConfig.scale || 1);
 
-          // Center model using ONLY the main ATV assembly's bounding box
-          let centerTarget = this.model;
-          this.model.traverse(n => {
-            if (n.name === 'Yamaha_YZF_450_2020') centerTarget = n;
-          });
-          const box = new THREE.Box3().setFromObject(centerTarget);
-          const center = box.getCenter(new THREE.Vector3());
-          const size = box.getSize(new THREE.Vector3());
-          this.model.position.sub(center);
-          this.model.position.y += size.y / 2;
+            // Center model using ONLY the main ATV assembly's bounding box
+            let centerTarget = this.model;
+            this.model.traverse(n => {
+              if (n.name === 'Yamaha_YZF_450_2020') centerTarget = n;
+            });
+            const box = new THREE.Box3().setFromObject(centerTarget);
+            const center = box.getCenter(new THREE.Vector3());
+            const size = box.getSize(new THREE.Vector3());
+            this.model.position.sub(center);
+            this.model.position.y += size.y / 2;
 
-          // Map meshes, set up materials
-          this.model.traverse(obj => {
-            const objName = (obj.name || '').toLowerCase();
-            const parentName = (obj.parent && obj.parent.name || '').toLowerCase();
-            const fullName = objName + ' ' + parentName;
-            
-            // Hide other vehicles (KTM, Husqvarna, YZF dirt bike) and floating duplicate parts
-            if (modelConfig.id === 'yfz450r') {
-              let rootNode = obj;
-              while (rootNode.parent && rootNode.parent !== this.model) {
-                rootNode = rootNode.parent;
-              }
-              const rootName = rootNode.name.toLowerCase();
+            // Map meshes, set up materials
+            this.model.traverse(obj => {
+              const objName = (obj.name || '').toLowerCase();
+              const parentName = (obj.parent && obj.parent.name || '').toLowerCase();
+              const fullName = objName + ' ' + parentName;
+              
+              // Hide other vehicles (KTM, Husqvarna, YZF dirt bike) and floating duplicate parts
+              if (modelConfig.id === 'yfz450r') {
+                let rootNode = obj;
+                while (rootNode.parent && rootNode.parent !== this.model) {
+                  rootNode = rootNode.parent;
+                }
+                const rootName = (rootNode.name || '').toLowerCase();
 
-              const badRootGroups = new Set([
-                'yamaha_yzf_450_2020.001', 'yamaha_yzf_450_2020.002', 'yamaha_yzf_450_2020.003',
-                'yamaha_yzf_450_2020.004', 'yamaha_yzf_450_2020.005',
-                'yamaha_yzf_450_2020.006', 'yamaha_yzf_450_2020.007',
-                'yamaha_yzf_450_2020.008', 'yamaha_yzf_450_2020.009',
-                'yamaha_yzf_450_2020.010',
-                'yamaha_yzf_450_2020.011', // dirt bike forks Y=37-64 units
-                'yamaha_yzf_450_2020.012',
-                'yamaha_yzf_450_2020.013',
-                'yamaha_yzf_450_2020.014', 'yamaha_yzf_450_2020.015',
-                'yamaha_yzf_450_2020.016',
-                'yamaha_yzf_450_2020.017', 'yamaha_yzf_450_2020.018',
-                'new graphic', // mispositioned decals
-                'sticker.001',
-              ]);
+                const badRootGroups = new Set([
+                  'yamaha_yzf_450_2020.001', 'yamaha_yzf_450_2020.002', 'yamaha_yzf_450_2020.003',
+                  'yamaha_yzf_450_2020.004', 'yamaha_yzf_450_2020.005',
+                  'yamaha_yzf_450_2020.006', 'yamaha_yzf_450_2020.007',
+                  'yamaha_yzf_450_2020.008', 'yamaha_yzf_450_2020.009',
+                  'yamaha_yzf_450_2020.010',
+                  'yamaha_yzf_450_2020.011', // dirt bike forks Y=37-64 units
+                  'yamaha_yzf_450_2020.012',
+                  'yamaha_yzf_450_2020.013',
+                  'yamaha_yzf_450_2020.014', 'yamaha_yzf_450_2020.015',
+                  'yamaha_yzf_450_2020.016',
+                  'yamaha_yzf_450_2020.017', 'yamaha_yzf_450_2020.018',
+                  'new graphic', // mispositioned decals
+                  'sticker.001',
+                ]);
 
               const isToHide = (
                 badRootGroups.has(rootName) ||
@@ -434,6 +435,10 @@ class MotorcycleConfigurator {
           this.controls.update();
 
           resolve(true);
+          } catch (err) {
+            console.error("Error in gltf success callback:", err);
+            resolve(false);
+          }
         },
         (event) => {
           if (event.lengthComputable && onProgress) {
@@ -1382,13 +1387,7 @@ async function init() {
   // Pre-load the first model in the background as soon as we start
   if (MODELS_CONFIG.models.length > 0) {
     const defaultModel = MODELS_CONFIG.models[0];
-    state.modelId = defaultModel.id;
-    state.modelConfig = defaultModel;
-    
-    // Begin loading model silently while user is on personalization gate
-    configurator.loadModel(defaultModel, (pct) => {
-      setLoadingProgress(pct, pct < 90 ? 'Loading 3D asset...' : 'Optimizing textures...');
-    });
+    selectModel(defaultModel.id);
   }
 
   // Set up Personalization Gate welcome screen buttons
