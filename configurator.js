@@ -49,8 +49,8 @@ const state = {
   activePlate: 'front',
   plates: {
     front: { number: '333', font: 'bebas', color: '#000000', strokeColor: '#ffffff', x: 757, y: 1487, fontSize: 240, rotation: 0, stretchH: 1.0, stretchV: 1.0, letterSpacing: 0.02, strokeWidth: 4 },
-    left:  { number: '333', font: 'bebas', color: '#000000', strokeColor: '#ffffff', x: 1781, y: 463, fontSize: 200, rotation: 90, stretchH: 1.0, stretchV: 1.0, letterSpacing: 0.02, strokeWidth: 4 },
-    right: { number: '333', font: 'bebas', color: '#000000', strokeColor: '#ffffff', x: 1781, y: 1487, fontSize: 200, rotation: -90, stretchH: 1.0, stretchV: 1.0, letterSpacing: 0.02, strokeWidth: 4 },
+    left:  { number: '333', font: 'bebas', color: '#000000', strokeColor: '#ffffff', x: 1781, y: 463, fontSize: 200, rotation: 0, stretchH: 1.0, stretchV: 1.0, letterSpacing: 0.02, strokeWidth: 4 },
+    right: { number: '333', font: 'bebas', color: '#000000', strokeColor: '#ffffff', x: 1781, y: 1487, fontSize: 200, rotation: 0, stretchH: 1.0, stretchV: 1.0, letterSpacing: 0.02, strokeWidth: 4 },
   }
 };
 
@@ -261,9 +261,39 @@ class MotorcycleConfigurator {
       this.renderer.render(this.scene, this.camera);
     }
     if (this.labelRenderer && this.scene && this.camera) {
+      // Per-frame culling: hide labels whose panel faces away from camera
+      this._updateLabelVisibility();
       this.labelRenderer.render(this.scene, this.camera);
     }
   }
+
+  _updateLabelVisibility() {
+    if (!this._labelAnchors || !this.camera) return;
+    const camPos = this.camera.position;
+
+    // World-space normals for each plate (which direction it faces)
+    const plateNormals = {
+      front: new THREE.Vector3(0, 0, 1),   // faces forward (positive Z)
+      left:  new THREE.Vector3(-1, 0, 0),  // faces left (negative X)
+      right: new THREE.Vector3(1, 0, 0),   // faces right (positive X)
+    };
+
+    const plateKeys = ['front', 'left', 'right'];
+    this._labelAnchors.forEach((anchor, i) => {
+      const key = plateKeys[i];
+      const normal = plateNormals[key];
+      const label = this.plateLabels[key];
+      if (!label) return;
+
+      // Vector from anchor to camera
+      const toCam = new THREE.Vector3().subVectors(camPos, anchor.position).normalize();
+      // Dot > 0 means camera is on the same side as the face normal
+      const dot = normal.dot(toCam);
+      label.element.style.opacity = dot > 0 ? '1' : '0';
+      label.element.style.transition = 'opacity 0.3s';
+    });
+  }
+
 
   /* ----- GLTF LOADER ----- */
   async loadModel(modelConfig, onProgress) {
@@ -319,7 +349,7 @@ class MotorcycleConfigurator {
 
                 const badRootGroups = new Set([
                   'yamaha_yzf_450_2020.001', 'yamaha_yzf_450_2020.002', 'yamaha_yzf_450_2020.003',
-                  'yamaha_yzf_450_2020.004', 'yamaha_yzf_450_2020.005',
+                  'yamaha_yzf_450_2020.005',
                   'yamaha_yzf_450_2020.006', 'yamaha_yzf_450_2020.007',
                   'yamaha_yzf_450_2020.008', 'yamaha_yzf_450_2020.009',
                   'yamaha_yzf_450_2020.010',
@@ -784,91 +814,121 @@ class MotorcycleConfigurator {
 
   /* ----- CSS2D PLATE LABELS (number + name overlaid on 3D model) ----- */
   _updatePlateLabels() {
-    if (!this.scene || !this.model) return;
+    if (!this.scene) return;
 
     const fontMap = {
-      bebas:   "'Bebas Neue', Impact, sans-serif",
-      racing:  "'Racing Sans One', Impact, sans-serif",
-      orbitron:"'Orbitron', sans-serif",
-      bangers: "'Bangers', cursive",
-      russo:   "'Russo One', sans-serif",
+      bebas:    "'Bebas Neue', Impact, sans-serif",
+      racing:   "'Racing Sans One', Impact, sans-serif",
+      orbitron: "'Orbitron', sans-serif",
+      bangers:  "'Bangers', cursive",
+      russo:    "'Russo One', sans-serif",
     };
 
-    // plate mesh name -> state plate key
-    const plateMapping = {
-      'text_plate01': 'front',  // front panel (Z positive, higher up)
-      'text_plate00': 'right',  // right side fender
-      'text_plate02': 'left',   // left side fender
-    };
-
-    // Remove old labels
-    Object.values(this.plateLabels).forEach(lbl => {
-      if (lbl.parent) lbl.parent.remove(lbl);
-      lbl.element.remove();
-    });
+    // Remove old anchor objects + labels
+    if (this._labelAnchors) {
+      this._labelAnchors.forEach(anchor => {
+        if (anchor.children[0]) anchor.children[0].element.remove();
+        this.scene.remove(anchor);
+      });
+    }
+    this._labelAnchors = [];
     this.plateLabels = {};
 
-    // Build labels on each plate mesh
-    this.model.traverse(obj => {
-      if (!obj.isMesh) return;
-      const nm = obj.name.toLowerCase();
-      let plateKey = null;
-      for (const [meshName, key] of Object.entries(plateMapping)) {
-        if (nm.includes(meshName)) { plateKey = key; break; }
-      }
-      if (!plateKey) return;
+    // ── Calibrated world-space positions for the YFZ 450R ATV panels ──
+    // Center of ATV front nose cone: X = 0.0, Y = 0.72, Z = 0.58
+    // Rear left fender cover (wing): X = -0.58, Y = 0.62, Z = -0.45
+    // Rear right fender cover (wing): X = 0.58, Y = 0.62, Z = -0.45
+    const platePositions = {
+      front: new THREE.Vector3(0.0, 0.72, 0.58),
+      left:  new THREE.Vector3(-0.58, 0.62, -0.45),
+      right: new THREE.Vector3( 0.58, 0.62, -0.45),
+    };
 
+    // Get selected sponsor logo option
+    const logoOption = MODELS_CONFIG?.logoOptions?.find(l => l.id === state.logo);
+    const logoUrl = logoOption && logoOption.file ? logoOption.file : null;
+
+    // Build a label for each plate
+    Object.entries(platePositions).forEach(([plateKey, worldPos]) => {
       const p = state.plates[plateKey];
-      const riderNum = p.number || state.riderNumber || '333';
-      const riderName = (state.riderName || '').toUpperCase();
-      const fontFamily = fontMap[p.font] || fontMap.bebas;
-      const color = p.color || '#000000';
-      const strokeColor = p.strokeColor || '#ffffff';
-      const isFront = plateKey === 'front';
-      const isLeft = plateKey === 'left';
+      if (!p) return;
 
-      // Build the HTML label
+      const riderNum   = p.number || state.riderNumber || '333';
+      const riderName  = (state.riderName || '').toUpperCase();
+      const fontFamily = fontMap[p.font] || fontMap.bebas;
+      const color      = p.color || '#000000';
+      const strokeColor = p.strokeColor || '#ffffff';
+      const isFront    = plateKey === 'front';
+
+      // Outer container
       const div = document.createElement('div');
       div.className = 'plate-label-3d';
+
+      // Read rotation and stretch parameters directly from the plate state sliders
+      const rotDeg = p.rotation || 0;
+      const stretchH = p.stretchH || 1.0;
+      const stretchV = p.stretchV || 1.0;
+
       div.style.cssText = [
-        'position: relative',
         'pointer-events: none',
         'user-select: none',
         'text-align: center',
         'line-height: 1',
         'white-space: nowrap',
-        // Rotate side labels to run horizontally along the fender (front-to-back)
-        `transform: rotate(${isFront ? '0deg' : (isLeft ? '-90deg' : '90deg')})`,
+        `transform: rotate(${rotDeg}deg) scale(${stretchH}, ${stretchV})`,
         'transform-origin: center center',
+        'filter: drop-shadow(0 2px 4px rgba(0,0,0,0.35))',
       ].join(';');
 
-      // White plate background
+      // Scale font sizes based on slider value
+      const numSize  = Math.max(12, Math.round(p.fontSize / 4.5));
+      const nameSize = Math.max(8, Math.round(numSize * 0.28));
+
+      // Style container as a realistic motocross sticker decal
       div.innerHTML = `
         <div style="
-          background: rgba(255,255,255,0.88);
-          border: 3px solid ${color};
-          border-radius: 8px;
-          padding: 4px 10px 6px;
+          background: #ffffff;
+          border: 4px solid ${color};
+          border-radius: 12px;
+          padding: ${isFront ? '16px 24px 8px 18px' : '10px 18px 8px 18px'};
           display: inline-block;
           position: relative;
+          min-width: ${isFront ? '110px' : '90px'};
         ">
+          <!-- Rider Name on top-left -->
           ${riderName ? `<div style="
             font-family: ${fontFamily};
-            font-weight: bold;
-            font-size: 11px;
+            font-weight: 700;
+            font-size: ${nameSize}px;
             color: ${color};
-            letter-spacing: 1px;
-            margin-bottom: 0px;
-            text-align: ${isFront ? 'left' : 'center'};
+            letter-spacing: 1.5px;
+            margin-bottom: 4px;
+            text-align: left;
+            opacity: 0.9;
           ">${riderName}</div>` : ''}
+
+          <!-- Sponsor Logo on top-right (front plate only) -->
+          ${isFront && logoUrl ? `
+            <img src="${logoUrl}" style="
+              height: ${Math.round(nameSize * 1.5)}px;
+              position: absolute;
+              top: 14px;
+              right: 18px;
+              object-fit: contain;
+            " />
+          ` : ''}
+
+          <!-- Number in center -->
           <div style="
             font-family: ${fontFamily};
-            font-weight: bold;
-            font-size: 32px;
+            font-weight: 900;
+            font-size: ${numSize}px;
             color: ${color};
-            -webkit-text-stroke: 2px ${strokeColor};
-            letter-spacing: 2px;
-            line-height: 1;
+            -webkit-text-stroke: 1.5px ${strokeColor};
+            letter-spacing: -0.5px;
+            line-height: 0.95;
+            text-align: center;
+            margin-top: 4px;
           ">${riderNum}</div>
         </div>
       `;
@@ -876,8 +936,13 @@ class MotorcycleConfigurator {
       const label = new CSS2DObject(div);
       label.center.set(0.5, 0.5);
 
-      // Attach label to the mesh so it moves with the model
-      obj.add(label);
+      // Create a scene-level anchor at the calibrated world position
+      const anchor = new THREE.Object3D();
+      anchor.position.copy(worldPos);
+      anchor.add(label);
+      this.scene.add(anchor);
+
+      this._labelAnchors.push(anchor);
       this.plateLabels[plateKey] = label;
     });
   }

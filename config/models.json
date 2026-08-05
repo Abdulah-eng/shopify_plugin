@@ -24,7 +24,7 @@
         { "id": "side_panels", "name": "Side Panels", "meshName": "body_carpaint", "default": "#111111" },
         { "id": "front_bumper", "name": "Front Bumper", "meshName": "bumper", "default": "#333333" }
       ],
-      "decalMesh": ["text_plate", "graphic"],
+      "decalMesh": ["graphic"],
       "cameraFov": 50,
       "cameraPosition": [0, 0.8, 3.2],
       "cameraTarget": [0, 0.4, 0],
