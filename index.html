@@ -175,19 +175,10 @@
   <!-- ── 3D VIEWER ── -->
   <main id="viewer" role="main" aria-label="3D ATV Preview">
     <canvas id="three-canvas" role="img" aria-label="Interactive 3D ATV configurator"></canvas>
-    
-    <!-- Drag hint -->
-    <div class="viewer-hint" id="viewer-hint">
-      <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5">
-        <path d="M10 2C7.24 2 5 4.24 5 7v6c0 2.76 2.24 5 5 5s5-2.24 5-5V7c0-2.76-2.24-5-5-5z"/>
-        <line x1="10" y1="9" x2="10" y2="13"/>
-      </svg>
-      Drag to rotate · Scroll to zoom
-    </div>
   </main>
 
   <!-- ── CUSTOM CONTROL DRAWER (BOTTOM WINDOW) ── -->
-  <div id="bottom-drawer">
+  <div id="bottom-drawer" class="closed">
     <!-- Sliding customizable content page -->
     <div id="drawer-content-area">
       <!-- DYNAMIC CONTENT IS INJECTED HERE -->
@@ -206,7 +197,7 @@
       <span class="bottom-tab-label">LOGOS</span>
     </button>
 
-    <button class="bottom-tab-btn active" data-tab="rider-id">
+    <button class="bottom-tab-btn" data-tab="rider-id">
       <div class="bottom-tab-skew"></div>
       <div class="bottom-tab-icon">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">

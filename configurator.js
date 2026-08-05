@@ -8,7 +8,6 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { RGBELoader } from 'three/addons/loaders/RGBELoader.js';
-import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
 
 
 /* ============================================================
@@ -48,9 +47,9 @@ const state = {
   // Multi-plate configuration state
   activePlate: 'front',
   plates: {
-    front: { number: '333', font: 'bebas', color: '#000000', strokeColor: '#ffffff', x: 757, y: 1487, fontSize: 240, rotation: 0, stretchH: 1.0, stretchV: 1.0, letterSpacing: 0.02, strokeWidth: 4 },
-    left:  { number: '333', font: 'bebas', color: '#000000', strokeColor: '#ffffff', x: 1781, y: 463, fontSize: 200, rotation: 0, stretchH: 1.0, stretchV: 1.0, letterSpacing: 0.02, strokeWidth: 4 },
-    right: { number: '333', font: 'bebas', color: '#000000', strokeColor: '#ffffff', x: 1781, y: 1487, fontSize: 200, rotation: 0, stretchH: 1.0, stretchV: 1.0, letterSpacing: 0.02, strokeWidth: 4 },
+    front: { number: '333', font: 'bebas', color: '#000000', strokeColor: '#ffffff', bgColor: '#ffffff', x: 510, y: 1695, fontSize: 240, rotation: 0, stretchH: 1.0, stretchV: 1.0, letterSpacing: 0.02, strokeWidth: 4 },
+    left:  { number: '333', font: 'bebas', color: '#000000', strokeColor: '#ffffff', bgColor: '#ffffff', x: 808, y: 318, fontSize: 200, rotation: 0, stretchH: 1.0, stretchV: 1.0, letterSpacing: 0.02, strokeWidth: 4 },
+    right: { number: '333', font: 'bebas', color: '#000000', strokeColor: '#ffffff', bgColor: '#ffffff', x: 1520, y: 313, fontSize: 200, rotation: 0, stretchH: 1.0, stretchV: 1.0, letterSpacing: 0.02, strokeWidth: 4 },
   }
 };
 
@@ -63,7 +62,6 @@ class MotorcycleConfigurator {
     this.scene = null;
     this.camera = null;
     this.renderer = null;
-    this.labelRenderer = null;  // CSS2DRenderer for plate labels
     this.controls = null;
     this.model = null;
     this.meshMap = {};       // meshName -> THREE.Mesh
@@ -71,7 +69,6 @@ class MotorcycleConfigurator {
     this.decalCanvas = null;
     this.decalCtx = null;
     this.decalTexture = null;
-    this.plateLabels = {};   // { front, left, right } -> CSS2DObject
     this.autoRotate = true;
     this.autoRotateTimer = null;
     this.animFrameId = null;
@@ -81,7 +78,6 @@ class MotorcycleConfigurator {
 
   init() {
     this._setupRenderer();
-    this._setupLabelRenderer();
     this._setupScene();
     this._setupCamera();
     this._setupLights();
@@ -107,20 +103,7 @@ class MotorcycleConfigurator {
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
   }
 
-  _setupLabelRenderer() {
-    this.labelRenderer = new CSS2DRenderer();
-    const parent = this.canvas.parentElement;
-    const w = parent ? parent.clientWidth : this.canvas.offsetWidth;
-    const h = parent ? parent.clientHeight : this.canvas.offsetHeight;
-    this.labelRenderer.setSize(w, h);
-    this.labelRenderer.domElement.style.position = 'absolute';
-    this.labelRenderer.domElement.style.top = '0';
-    this.labelRenderer.domElement.style.left = '0';
-    this.labelRenderer.domElement.style.pointerEvents = 'none';
-    this.labelRenderer.domElement.style.overflow = 'hidden';
-    // Insert into the same parent as the canvas
-    (parent || document.body).appendChild(this.labelRenderer.domElement);
-  }
+
 
   _setupScene() {
     this.scene = new THREE.Scene();
@@ -251,7 +234,6 @@ class MotorcycleConfigurator {
     this.camera.aspect = w / h;
     this.camera.updateProjectionMatrix();
     this.renderer.setSize(w, h);
-    if (this.labelRenderer) this.labelRenderer.setSize(w, h);
   }
 
   _animate() {
@@ -260,38 +242,6 @@ class MotorcycleConfigurator {
     if (this.renderer && this.scene && this.camera) {
       this.renderer.render(this.scene, this.camera);
     }
-    if (this.labelRenderer && this.scene && this.camera) {
-      // Per-frame culling: hide labels whose panel faces away from camera
-      this._updateLabelVisibility();
-      this.labelRenderer.render(this.scene, this.camera);
-    }
-  }
-
-  _updateLabelVisibility() {
-    if (!this._labelAnchors || !this.camera) return;
-    const camPos = this.camera.position;
-
-    // World-space normals for each plate (which direction it faces)
-    const plateNormals = {
-      front: new THREE.Vector3(0, 0, 1),   // faces forward (positive Z)
-      left:  new THREE.Vector3(-1, 0, 0),  // faces left (negative X)
-      right: new THREE.Vector3(1, 0, 0),   // faces right (positive X)
-    };
-
-    const plateKeys = ['front', 'left', 'right'];
-    this._labelAnchors.forEach((anchor, i) => {
-      const key = plateKeys[i];
-      const normal = plateNormals[key];
-      const label = this.plateLabels[key];
-      if (!label) return;
-
-      // Vector from anchor to camera
-      const toCam = new THREE.Vector3().subVectors(camPos, anchor.position).normalize();
-      // Dot > 0 means camera is on the same side as the face normal
-      const dot = normal.dot(toCam);
-      label.element.style.opacity = dot > 0 ? '1' : '0';
-      label.element.style.transition = 'opacity 0.3s';
-    });
   }
 
 
@@ -401,7 +351,6 @@ class MotorcycleConfigurator {
             }
 
             if (obj.isMesh) {
-              const fullName = obj.name.toLowerCase();
               if (fullName.includes('new graphic')) {
                 const geom = obj.geometry;
                 if (geom && geom.attributes.position && geom.attributes.uv) {
@@ -409,38 +358,29 @@ class MotorcycleConfigurator {
                   const uv = geom.attributes.uv;
                   obj.updateMatrixWorld(true);
                   
-                  let leftWingUVs = [];
-                  let rightWingUVs = [];
-                  
                   for (let i = 0; i < pos.count; i++) {
                     const localV = new THREE.Vector3(pos.getX(i), pos.getY(i), pos.getZ(i));
                     const worldV = localV.clone().applyMatrix4(obj.matrixWorld);
                     
-                    if (worldV.z < -0.3 && worldV.y > 0.5) {
-                      const u = uv.getX(i);
-                      const v = uv.getY(i);
-                      if (worldV.x > 0.2) {
-                        leftWingUVs.push({ u, v });
-                      } else if (worldV.x < -0.2) {
-                        rightWingUVs.push({ u, v });
+                    let u = uv.getX(i);
+                    let v = uv.getY(i);
+                     if (worldV.z > 0.3 && Math.abs(worldV.x) < 0.15) {
+                       // Front Nose: shift to bottom center (Column 1.5, Row 2)
+                       u = u - 0.2346;
+                       v = v - 0.5724;
+                     } else if (worldV.z < 0.3) {
+                      if (worldV.x < -0.2) {
+                        // Left Wing: align to x: 808
+                        u = u + 0.0301;
+                      } else if (worldV.x > 0.2) {
+                        // Right Wing: align to x: 1640, y: 313
+                        u = u + 0.498;
+                        v = v + 0.6822;
                       }
                     }
+                    uv.setXY(i, u, v);
                   }
-                  
-                  const getBounds = (uvs) => {
-                    let minU = Infinity, maxU = -Infinity;
-                    let minV = Infinity, maxV = -Infinity;
-                    uvs.forEach(({ u, v }) => {
-                      if (u < minU) minU = u;
-                      if (u > maxU) maxU = u;
-                      if (v < minV) minV = v;
-                      if (v > maxV) maxV = v;
-                    });
-                    return { minU, maxU, minV, maxV };
-                  };
-                  
-                  console.log('[WING-INSPECT] Left Wing UV bounds:', getBounds(leftWingUVs));
-                  console.log('[WING-INSPECT] Right Wing UV bounds:', getBounds(rightWingUVs));
+                  uv.needsUpdate = true;
                 }
               }
               obj.castShadow = true;
@@ -686,7 +626,7 @@ class MotorcycleConfigurator {
       ctx.translate(p.x, p.y);
       ctx.rotate((p.rotation * Math.PI) / 180);
 
-      ctx.fillStyle = 'rgba(255,255,255,0.92)';
+      ctx.fillStyle = p.bgColor || '#ffffff';
       ctx.strokeStyle = bodyColor;
       ctx.lineWidth = 14;
       
@@ -807,145 +747,9 @@ class MotorcycleConfigurator {
       previewCtx.clearRect(0, 0, previewCanvas.width, previewCanvas.height);
       previewCtx.drawImage(this.decalCanvas, 0, 0, previewCanvas.width, previewCanvas.height);
     }
-
-    // Update CSS2D plate labels anchored to 3D mesh positions
-    this._updatePlateLabels();
   }
 
-  /* ----- CSS2D PLATE LABELS (number + name overlaid on 3D model) ----- */
-  _updatePlateLabels() {
-    if (!this.scene) return;
 
-    const fontMap = {
-      bebas:    "'Bebas Neue', Impact, sans-serif",
-      racing:   "'Racing Sans One', Impact, sans-serif",
-      orbitron: "'Orbitron', sans-serif",
-      bangers:  "'Bangers', cursive",
-      russo:    "'Russo One', sans-serif",
-    };
-
-    // Remove old anchor objects + labels
-    if (this._labelAnchors) {
-      this._labelAnchors.forEach(anchor => {
-        if (anchor.children[0]) anchor.children[0].element.remove();
-        this.scene.remove(anchor);
-      });
-    }
-    this._labelAnchors = [];
-    this.plateLabels = {};
-
-    // ── Calibrated world-space positions for the YFZ 450R ATV panels ──
-    // Center of ATV front nose cone: X = 0.0, Y = 0.72, Z = 0.58
-    // Rear left fender cover (wing): X = -0.58, Y = 0.62, Z = -0.45
-    // Rear right fender cover (wing): X = 0.58, Y = 0.62, Z = -0.45
-    const platePositions = {
-      front: new THREE.Vector3(0.0, 0.72, 0.58),
-      left:  new THREE.Vector3(-0.58, 0.62, -0.45),
-      right: new THREE.Vector3( 0.58, 0.62, -0.45),
-    };
-
-    // Get selected sponsor logo option
-    const logoOption = MODELS_CONFIG?.logoOptions?.find(l => l.id === state.logo);
-    const logoUrl = logoOption && logoOption.file ? logoOption.file : null;
-
-    // Build a label for each plate
-    Object.entries(platePositions).forEach(([plateKey, worldPos]) => {
-      const p = state.plates[plateKey];
-      if (!p) return;
-
-      const riderNum   = p.number || state.riderNumber || '333';
-      const riderName  = (state.riderName || '').toUpperCase();
-      const fontFamily = fontMap[p.font] || fontMap.bebas;
-      const color      = p.color || '#000000';
-      const strokeColor = p.strokeColor || '#ffffff';
-      const isFront    = plateKey === 'front';
-
-      // Outer container
-      const div = document.createElement('div');
-      div.className = 'plate-label-3d';
-
-      // Read rotation and stretch parameters directly from the plate state sliders
-      const rotDeg = p.rotation || 0;
-      const stretchH = p.stretchH || 1.0;
-      const stretchV = p.stretchV || 1.0;
-
-      div.style.cssText = [
-        'pointer-events: none',
-        'user-select: none',
-        'text-align: center',
-        'line-height: 1',
-        'white-space: nowrap',
-        `transform: rotate(${rotDeg}deg) scale(${stretchH}, ${stretchV})`,
-        'transform-origin: center center',
-        'filter: drop-shadow(0 2px 4px rgba(0,0,0,0.35))',
-      ].join(';');
-
-      // Scale font sizes based on slider value
-      const numSize  = Math.max(12, Math.round(p.fontSize / 4.5));
-      const nameSize = Math.max(8, Math.round(numSize * 0.28));
-
-      // Style container as a realistic motocross sticker decal
-      div.innerHTML = `
-        <div style="
-          background: #ffffff;
-          border: 4px solid ${color};
-          border-radius: 12px;
-          padding: ${isFront ? '16px 24px 8px 18px' : '10px 18px 8px 18px'};
-          display: inline-block;
-          position: relative;
-          min-width: ${isFront ? '110px' : '90px'};
-        ">
-          <!-- Rider Name on top-left -->
-          ${riderName ? `<div style="
-            font-family: ${fontFamily};
-            font-weight: 700;
-            font-size: ${nameSize}px;
-            color: ${color};
-            letter-spacing: 1.5px;
-            margin-bottom: 4px;
-            text-align: left;
-            opacity: 0.9;
-          ">${riderName}</div>` : ''}
-
-          <!-- Sponsor Logo on top-right (front plate only) -->
-          ${isFront && logoUrl ? `
-            <img src="${logoUrl}" style="
-              height: ${Math.round(nameSize * 1.5)}px;
-              position: absolute;
-              top: 14px;
-              right: 18px;
-              object-fit: contain;
-            " />
-          ` : ''}
-
-          <!-- Number in center -->
-          <div style="
-            font-family: ${fontFamily};
-            font-weight: 900;
-            font-size: ${numSize}px;
-            color: ${color};
-            -webkit-text-stroke: 1.5px ${strokeColor};
-            letter-spacing: -0.5px;
-            line-height: 0.95;
-            text-align: center;
-            margin-top: 4px;
-          ">${riderNum}</div>
-        </div>
-      `;
-
-      const label = new CSS2DObject(div);
-      label.center.set(0.5, 0.5);
-
-      // Create a scene-level anchor at the calibrated world position
-      const anchor = new THREE.Object3D();
-      anchor.position.copy(worldPos);
-      anchor.add(label);
-      this.scene.add(anchor);
-
-      this._labelAnchors.push(anchor);
-      this.plateLabels[plateKey] = label;
-    });
-  }
 
   setRiderName(name) {
     state.riderName = name;
@@ -1058,9 +862,42 @@ async function selectModel(modelId) {
    BOTTOM WINDOW CUSTOM DYNAMIC BUILDERS
    ============================================================ */
 
-function switchBottomTab(tabId) {
+function closeBottomDrawer() {
+  const drawer = document.getElementById('bottom-drawer');
+  if (drawer) {
+    drawer.classList.add('closed');
+  }
   document.querySelectorAll('.bottom-tab-btn').forEach(btn => {
-    btn.classList.toggle('active', btn.dataset.tab === tabId);
+    btn.classList.remove('active');
+  });
+}
+
+function openBottomDrawer() {
+  const drawer = document.getElementById('bottom-drawer');
+  if (drawer) {
+    drawer.classList.remove('closed');
+  }
+}
+
+function bindCloseBtn(container) {
+  container.querySelector('.btn-close-drawer')?.addEventListener('click', () => {
+    closeBottomDrawer();
+  });
+}
+
+function switchBottomTab(tabId) {
+  const drawer = document.getElementById('bottom-drawer');
+  const btn = document.querySelector(`.bottom-tab-btn[data-tab="${tabId}"]`);
+  
+  if (btn && btn.classList.contains('active') && drawer && !drawer.classList.contains('closed')) {
+    closeBottomDrawer();
+    return;
+  }
+  
+  openBottomDrawer();
+  
+  document.querySelectorAll('.bottom-tab-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.tab === tabId);
   });
   
   const contentArea = document.getElementById('drawer-content-area');
@@ -1085,6 +922,12 @@ function renderLogosDrawer(container) {
   container.innerHTML = `
     <div class="drawer-panel">
       <div class="drawer-hd">
+        <button class="drawer-back-btn btn-close-drawer" aria-label="Close Editor">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <line x1="19" y1="12" x2="5" y2="12"></line>
+            <polyline points="12,19 5,12 12,5"></polyline>
+          </svg>
+        </button>
         <span class="drawer-title">Select Sponsor Logo</span>
       </div>
       <div class="logos-grid-container">
@@ -1103,6 +946,7 @@ function renderLogosDrawer(container) {
     </div>
   `;
   
+  bindCloseBtn(container);
   container.querySelectorAll('.logo-option-card').forEach(card => {
     card.addEventListener('click', () => {
       const logoId = card.dataset.id;
@@ -1126,6 +970,12 @@ function renderRiderIDDrawer(container) {
   container.innerHTML = `
     <div class="drawer-panel">
       <div class="drawer-hd">
+        <button class="drawer-back-btn btn-close-drawer" aria-label="Close Editor">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <line x1="19" y1="12" x2="5" y2="12"></line>
+            <polyline points="12,19 5,12 12,5"></polyline>
+          </svg>
+        </button>
         <span class="drawer-title">Personalize Your Rider ID Plates</span>
       </div>
       <div class="sub-tabs-container" style="margin-top: 10px">
@@ -1148,6 +998,7 @@ function renderRiderIDDrawer(container) {
     </div>
   `;
   
+  bindCloseBtn(container);
   container.querySelectorAll('.sub-tab-card').forEach(card => {
     card.addEventListener('click', () => {
       editPlateMode = card.dataset.plate;
@@ -1349,6 +1200,12 @@ function renderMaterialsDrawer(container) {
   container.innerHTML = `
     <div class="drawer-panel">
       <div class="drawer-hd">
+        <button class="drawer-back-btn btn-close-drawer" aria-label="Close Editor">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <line x1="19" y1="12" x2="5" y2="12"></line>
+            <polyline points="12,19 5,12 12,5"></polyline>
+          </svg>
+        </button>
         <span class="drawer-title">Print Base & Lamination Options</span>
       </div>
       <div class="materials-columns" style="margin-top: 8px">
@@ -1380,6 +1237,7 @@ function renderMaterialsDrawer(container) {
     </div>
   `;
   
+  bindCloseBtn(container);
   container.querySelectorAll('[data-base]').forEach(card => {
     card.addEventListener('click', () => {
       state.printBase = card.dataset.base;
@@ -1399,167 +1257,473 @@ function renderMaterialsDrawer(container) {
   });
 }
 
-function renderPlateDrawer(container) {
-  container.innerHTML = `
-    <div class="drawer-panel">
-      <div class="drawer-hd">
-        <span class="drawer-title">Plate Styling & Details</span>
+function initCustomColorPicker(pickerContainer, initialHex, onChangeCallback) {
+  let currentHex = initialHex.toUpperCase();
+  
+  function hexToRgb(hex) {
+    const bigint = parseInt(hex.replace('#', ''), 16);
+    return {
+      r: (bigint >> 16) & 255,
+      g: (bigint >> 8) & 255,
+      b: bigint & 255
+    };
+  }
+
+  function rgbToHex(r, g, b) {
+    return '#' + [r, g, b].map(x => {
+      const hex = x.toString(16);
+      return hex.length === 1 ? '0' + hex : hex;
+    }).join('').toUpperCase();
+  }
+
+  function rgbToHsv(r, g, b) {
+    r /= 255; g /= 255; b /= 255;
+    const max = Math.max(r, g, b), min = Math.min(r, g, b);
+    let h, s, v = max;
+    const d = max - min;
+    s = max === 0 ? 0 : d / max;
+    if (max === min) {
+      h = 0;
+    } else {
+      switch (max) {
+        case r: h = (g - b) / d + (g < b ? 6 : 0); break;
+        case g: h = (b - r) / d + 2; break;
+        case b: h = (r - g) / d + 4; break;
+      }
+      h /= 6;
+    }
+    return { h: h * 360, s: s * 100, v: v * 100 };
+  }
+
+  function hsvToRgb(h, s, v) {
+    s /= 100; v /= 100;
+    let r, g, b;
+    const i = Math.floor(h / 60);
+    const f = h / 60 - i;
+    const p = v * (1 - s);
+    const q = v * (1 - f * s);
+    const t = v * (1 - (1 - f) * s);
+    switch (i % 6) {
+      case 0: r = v; g = t; b = p; break;
+      case 1: r = q; g = v; b = p; break;
+      case 2: r = p; g = v; b = t; break;
+      case 3: r = p; g = q; b = v; break;
+      case 4: r = t; g = p; b = v; break;
+      case 5: r = v; g = p; b = q; break;
+    }
+    return { r: Math.round(r * 255), g: Math.round(g * 255), b: Math.round(b * 255) };
+  }
+
+  let rgb = hexToRgb(currentHex);
+  let hsv = rgbToHsv(rgb.r, rgb.g, rgb.b);
+
+  pickerContainer.innerHTML = `
+    <div class="custom-color-picker-container">
+      <div class="picker-canvas-wrapper">
+        <canvas class="picker-sb-canvas" width="180" height="180"></canvas>
+        <div class="picker-canvas-cursor"></div>
       </div>
-      <p class="panel-hint" style="font-size:11px;color:var(--text-muted);margin-top:4px">Quick styles to customize background plate designs.</p>
-      <div class="presets-grid" style="margin-top:10px">
-        <div class="preset-swatch-card" id="btn-plate-style-1">
-          <div class="preset-swatch-color" style="background:#ffffff"></div>
-          <span class="preset-swatch-name">Clean White (Standard)</span>
+      <div class="picker-slider-wrapper">
+        <input type="range" class="picker-hue-slider-input" min="0" max="360" step="1" value="${hsv.h}">
+        <div class="picker-eyedropper-btn" title="Pick color from screen">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <path d="M12 2l3 3-9 9H3v-3L12 2z"/>
+            <path d="M19 9l-4-4"/>
+          </svg>
         </div>
-        <div class="preset-swatch-card" id="btn-plate-style-2">
-          <div class="preset-swatch-color" style="background:#000000"></div>
-          <span class="preset-swatch-name">Carbon Stealth</span>
+      </div>
+      
+      <div class="picker-divider-line"></div>
+
+      <div class="picker-inputs-wrapper">
+        <div class="picker-input-item">
+          <label>Colors</label>
+          <select class="picker-dropdown-field">
+            <option value="#FFFFFF">WHITE</option>
+            <option value="#888888">GREY</option>
+            <option value="#FF2233">RED</option>
+            <option value="#000000">BLACK</option>
+            <option value="#0055AA">BLUE</option>
+            <option value="#FFDD00">YELLOW</option>
+            <option value="CUSTOM">CUSTOM</option>
+          </select>
+        </div>
+        <div class="picker-input-item">
+          <label>RGB</label>
+          <div class="picker-rgb-fields">
+            <input type="text" class="picker-rgb-box r-box" value="${rgb.r}">
+            <input type="text" class="picker-rgb-box g-box" value="${rgb.g}">
+            <input type="text" class="picker-rgb-box b-box" value="${rgb.b}">
+          </div>
+        </div>
+        <div class="picker-input-item">
+          <label>Hex</label>
+          <input type="text" class="picker-hex-box" value="${currentHex}">
         </div>
       </div>
     </div>
   `;
-  
-  container.querySelector('#btn-plate-style-1').addEventListener('click', () => {
+
+  const canvas = pickerContainer.querySelector('.picker-sb-canvas');
+  const cursor = pickerContainer.querySelector('.picker-canvas-cursor');
+  const hueSlider = pickerContainer.querySelector('.picker-hue-slider-input');
+  const eyedropperBtn = pickerContainer.querySelector('.picker-eyedropper-btn');
+  const colorSelect = pickerContainer.querySelector('.picker-dropdown-field');
+  const rBox = pickerContainer.querySelector('.r-box');
+  const gBox = pickerContainer.querySelector('.g-box');
+  const bBox = pickerContainer.querySelector('.b-box');
+  const hexBox = pickerContainer.querySelector('.picker-hex-box');
+
+  const ctx = canvas.getContext('2d');
+
+  function updateSelectValue(hex) {
+    const found = Array.from(colorSelect.options).some(opt => opt.value === hex);
+    if (found) {
+      colorSelect.value = hex;
+    } else {
+      colorSelect.value = 'CUSTOM';
+    }
+  }
+
+  function drawSB() {
+    const w = canvas.width;
+    const h = canvas.height;
+    ctx.clearRect(0, 0, w, h);
+    ctx.fillStyle = `hsl(${hsv.h}, 100%, 50%)`;
+    ctx.fillRect(0, 0, w, h);
+
+    const gradW = ctx.createLinearGradient(0, 0, w, 0);
+    gradW.addColorStop(0, '#ffffff');
+    gradW.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.fillStyle = gradW;
+    ctx.fillRect(0, 0, w, h);
+
+    const gradB = ctx.createLinearGradient(0, h, 0, 0);
+    gradB.addColorStop(0, '#000000');
+    gradB.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = gradB;
+    ctx.fillRect(0, 0, w, h);
+  }
+
+  function updateCursor() {
+    const x = (hsv.s / 100) * canvas.offsetWidth;
+    const y = (1 - (hsv.v / 100)) * canvas.offsetHeight;
+    cursor.style.left = x + 'px';
+    cursor.style.top = y + 'px';
+  }
+
+  function updateFromSB(clientX, clientY) {
+    const rect = canvas.getBoundingClientRect();
+    let x = clientX - rect.left;
+    let y = clientY - rect.top;
+    x = Math.max(0, Math.min(x, rect.width));
+    y = Math.max(0, Math.min(y, rect.height));
+    hsv.s = (x / rect.width) * 100;
+    hsv.v = (1 - (y / rect.height)) * 100;
+    triggerColorUpdate();
+  }
+
+  function triggerColorUpdate() {
+    rgb = hsvToRgb(hsv.h, hsv.s, hsv.v);
+    currentHex = rgbToHex(rgb.r, rgb.g, rgb.b);
+    rBox.value = rgb.r;
+    gBox.value = rgb.g;
+    bBox.value = rgb.b;
+    hexBox.value = currentHex;
+    updateSelectValue(currentHex);
+    updateCursor();
+    onChangeCallback(currentHex);
+  }
+
+  let isDragging = false;
+  canvas.addEventListener('mousedown', (e) => {
+    isDragging = true;
+    updateFromSB(e.clientX, e.clientY);
+  });
+  window.addEventListener('mousemove', (e) => {
+    if (isDragging) updateFromSB(e.clientX, e.clientY);
+  });
+  window.addEventListener('mouseup', () => { isDragging = false; });
+
+  canvas.addEventListener('touchstart', (e) => {
+    isDragging = true;
+    updateFromSB(e.touches[0].clientX, e.touches[0].clientY);
+  });
+  canvas.addEventListener('touchmove', (e) => {
+    if (isDragging) updateFromSB(e.touches[0].clientX, e.touches[0].clientY);
+  });
+  canvas.addEventListener('touchend', () => { isDragging = false; });
+
+  hueSlider.addEventListener('input', (e) => {
+    hsv.h = parseFloat(e.target.value);
+    drawSB();
+    triggerColorUpdate();
+  });
+
+  colorSelect.addEventListener('change', (e) => {
+    const val = e.target.value;
+    if (val !== 'CUSTOM') {
+      currentHex = val;
+      rgb = hexToRgb(currentHex);
+      hsv = rgbToHsv(rgb.r, rgb.g, rgb.b);
+      hueSlider.value = hsv.h;
+      drawSB();
+      triggerColorUpdate();
+    }
+  });
+
+  eyedropperBtn.addEventListener('click', () => {
+    if (window.EyeDropper) {
+      const ed = new EyeDropper();
+      ed.open().then(res => {
+        currentHex = res.sRGBHex.toUpperCase();
+        rgb = hexToRgb(currentHex);
+        hsv = rgbToHsv(rgb.r, rgb.g, rgb.b);
+        hueSlider.value = hsv.h;
+        drawSB();
+        triggerColorUpdate();
+      }).catch(() => {});
+    }
+  });
+
+  const handleTextChange = () => {
+    let r = parseInt(rBox.value) || 0;
+    let g = parseInt(gBox.value) || 0;
+    let b = parseInt(bBox.value) || 0;
+    r = Math.max(0, Math.min(r, 255));
+    g = Math.max(0, Math.min(g, 255));
+    b = Math.max(0, Math.min(b, 255));
+    currentHex = rgbToHex(r, g, b);
+    rgb = { r, g, b };
+    hsv = rgbToHsv(r, g, b);
+    hueSlider.value = hsv.h;
+    drawSB();
+    updateCursor();
+    updateSelectValue(currentHex);
+    onChangeCallback(currentHex);
+  };
+
+  rBox.addEventListener('change', handleTextChange);
+  gBox.addEventListener('change', handleTextChange);
+  bBox.addEventListener('change', handleTextChange);
+
+  hexBox.addEventListener('change', (e) => {
+    let val = e.target.value;
+    if (!val.startsWith('#')) val = '#' + val;
+    if (/^#[0-9A-F]{6}$/i.test(val)) {
+      currentHex = val.toUpperCase();
+      rgb = hexToRgb(currentHex);
+      hsv = rgbToHsv(rgb.r, rgb.g, rgb.b);
+      hueSlider.value = hsv.h;
+      drawSB();
+      triggerColorUpdate();
+    }
+  });
+
+  drawSB();
+  updateCursor();
+  updateSelectValue(currentHex);
+}
+
+function renderPlateDrawer(container) {
+  if (!state.selectedPlateColorTab) {
+    state.selectedPlateColorTab = 'front';
+  }
+
+  container.innerHTML = `
+    <div class="drawer-panel" style="flex-direction: row; align-items: center; justify-content: space-between; height: 100%">
+      <div style="display: flex; align-items: center; gap: 15px">
+        <button class="drawer-back-btn btn-close-drawer" aria-label="Close Editor">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" style="width: 20px; height: 20px">
+            <line x1="19" y1="12" x2="5" y2="12"></line>
+            <polyline points="12,19 5,12 12,5"></polyline>
+          </svg>
+        </button>
+        <span class="drawer-title" style="font-size: 16px; font-weight: 900; font-style: italic">PLATE COLORS</span>
+      </div>
+
+      <div style="display: flex; align-items: center; gap: 30px">
+        <!-- Radio Swatches -->
+        <div class="slanted-swatch-row">
+          <div class="slanted-swatch-item" data-id="front">
+            <span class="slanted-swatch-label">Front Plate</span>
+            <div class="slanted-swatch-circle ${state.selectedPlateColorTab === 'front' ? 'selected' : ''}" style="background: ${state.plates.front.bgColor || '#ffffff'}"></div>
+          </div>
+          <div class="slanted-swatch-item" data-id="left">
+            <span class="slanted-swatch-label">Left Plate</span>
+            <div class="slanted-swatch-circle ${state.selectedPlateColorTab === 'left' ? 'selected' : ''}" style="background: ${state.plates.left.bgColor || '#ffffff'}"></div>
+          </div>
+          <div class="slanted-swatch-item" data-id="right">
+            <span class="slanted-swatch-label">Right Plate</span>
+            <div class="slanted-swatch-circle ${state.selectedPlateColorTab === 'right' ? 'selected' : ''}" style="background: ${state.plates.right.bgColor || '#ffffff'}"></div>
+          </div>
+          
+          <button class="skew-apply-btn" id="btn-plate-apply-all" style="margin-left: 10px">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" style="width:12px; height:12px">
+              <polyline points="20,6 9,17 4,12"/>
+            </svg>
+            Apply To All
+          </button>
+        </div>
+
+        <div class="picker-divider-line"></div>
+
+        <!-- Custom Color Picker container -->
+        <div id="plate-custom-picker"></div>
+      </div>
+    </div>
+  `;
+
+  bindCloseBtn(container);
+  // Attach selection listeners
+  container.querySelectorAll('.slanted-swatch-item').forEach(item => {
+    item.addEventListener('click', () => {
+      state.selectedPlateColorTab = item.dataset.id;
+      renderPlateDrawer(container);
+    });
+  });
+
+  // Apply to all listener
+  container.querySelector('#btn-plate-apply-all').addEventListener('click', () => {
+    const activeBg = state.plates[state.selectedPlateColorTab].bgColor || '#ffffff';
     Object.keys(state.plates).forEach(k => {
-      state.plates[k].strokeColor = '#ffffff';
-      state.plates[k].color = '#000000';
+      state.plates[k].bgColor = activeBg;
     });
     configurator._redrawDecal();
-    showToast('✓ Clean White Plate Style applied', 'success');
+    renderPlateDrawer(container);
+    showToast('✦ Applied background color to all plates', 'success');
   });
-  
-  container.querySelector('#btn-plate-style-2').addEventListener('click', () => {
-    Object.keys(state.plates).forEach(k => {
-      state.plates[k].strokeColor = '#000000';
-      state.plates[k].color = '#D4FF00';
-    });
-    configurator._redrawDecal();
-    showToast('✓ Carbon Stealth Plate Style applied', 'success');
-  });
+
+  // Initialize the picker
+  const activePlate = state.plates[state.selectedPlateColorTab];
+  initCustomColorPicker(
+    container.querySelector('#plate-custom-picker'),
+    activePlate.bgColor || '#ffffff',
+    (hex) => {
+      activePlate.bgColor = hex;
+      // Also update background circle color in UI dynamically
+      const activeCircle = container.querySelector(`.slanted-swatch-item[data-id="${state.selectedPlateColorTab}"] .slanted-swatch-circle`);
+      if (activeCircle) activeCircle.style.background = hex;
+      configurator._redrawDecal();
+    }
+  );
 }
 
 function renderKitDrawer(container) {
+  const defaultColors = ['#FFFFFF', '#888888', '#FF2233', '#000000'];
+  const activeKitColor = state.colors.side_panels || '#0055aa';
+
   container.innerHTML = `
-    <div class="drawer-panel">
-      <div class="drawer-hd">
-        <span class="drawer-title">Customize Graphic Kit Components</span>
+    <div class="drawer-panel" style="flex-direction: row; align-items: center; justify-content: space-between; height: 100%">
+      <div style="display: flex; align-items: center; gap: 15px">
+        <button class="drawer-back-btn btn-close-drawer" aria-label="Close Editor">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" style="width: 20px; height: 20px">
+            <line x1="19" y1="12" x2="5" y2="12"></line>
+            <polyline points="12,19 5,12 12,5"></polyline>
+          </svg>
+        </button>
+        <span class="drawer-title" style="font-size: 16px; font-weight: 900; font-style: italic">KIT COLORS</span>
       </div>
-      <div class="materials-columns" style="margin-top:8px">
-        <div class="material-column">
-          <div class="materials-section-title">Kit Variant Options</div>
-          <div class="control-row">
-            <span class="control-label">Year</span>
-            <select id="select-year" class="font-dropdown-field" style="width: 140px">
-              ${(state.modelConfig?.years || ['2025', '2024', '2023']).map(y => `<option value="${y}" ${state.year === y ? 'selected' : ''}>${y}</option>`).join('')}
-            </select>
-          </div>
-          <div class="control-row" style="margin-top:8px">
-            <span class="control-label">Plastics Style</span>
-            <select id="select-plastics" class="font-dropdown-field" style="width: 140px">
-              ${(state.modelConfig?.plastics || ['Stock OEM', 'Race Cut', 'Wide Vent']).map(p => `<option value="${p}" ${state.plastics === p ? 'selected' : ''}>${p}</option>`).join('')}
-            </select>
+
+      <div style="display: flex; align-items: center; gap: 30px">
+        <!-- Solid Colors -->
+        <div class="slanted-swatch-row">
+          <div class="slanted-swatch-item">
+            <span class="slanted-swatch-label" style="text-align: left; width: 100%">Solid Colors</span>
+            <div style="display: flex; gap: 8px">
+              ${defaultColors.map(c => `
+                <div class="slanted-swatch-circle ${activeKitColor.toUpperCase() === c ? 'selected' : ''}" data-color="${c}" style="background: ${c}"></div>
+              `).join('')}
+            </div>
           </div>
         </div>
-        
-        <div class="material-column">
-          <div class="materials-section-title">Front Fender & Rims</div>
-          <div class="control-row">
-            <span class="control-label">Front Fender</span>
-            <select id="select-fender" class="font-dropdown-field" style="width: 140px">
-              ${(state.modelConfig?.frontFenders || ['Standard', 'MX Vent', 'Shorty']).map(f => `<option value="${f}" ${state.frontFender === f ? 'selected' : ''}>${f}</option>`).join('')}
-            </select>
-          </div>
-          <div class="control-row" style="margin-top:8px">
-            <span class="control-label">Rims Graphics</span>
-            <select id="select-wheels" class="font-dropdown-field" style="width: 140px">
-              ${(state.modelConfig?.wheelsGraphics || ['No Decals', 'Brand Accent', 'Full Wrap']).map(w => `<option value="${w}" ${state.wheelsGraphics === w ? 'selected' : ''}>${w}</option>`).join('')}
-            </select>
-          </div>
-        </div>
+
+        <div class="picker-divider-line"></div>
+
+        <!-- Custom Color Picker container -->
+        <div id="kit-custom-picker"></div>
       </div>
     </div>
   `;
-  
-  container.querySelector('#select-year').addEventListener('change', (e) => {
-    state.year = e.target.value;
-    updateSummary();
+
+  bindCloseBtn(container);
+  // Swatch click listeners
+  container.querySelectorAll('.slanted-swatch-circle').forEach(circle => {
+    circle.addEventListener('click', () => {
+      const hex = circle.dataset.color;
+      configurator.setZoneColor('side_panels', hex);
+      configurator.setZoneColor('front_fender', hex);
+      renderKitDrawer(container);
+    });
   });
-  container.querySelector('#select-plastics').addEventListener('change', (e) => {
-    state.plastics = e.target.value;
-    updateSummary();
-  });
-  container.querySelector('#select-fender').addEventListener('change', (e) => {
-    state.frontFender = e.target.value;
-    updateSummary();
-  });
-  container.querySelector('#select-wheels').addEventListener('change', (e) => {
-    state.wheelsGraphics = e.target.value;
-    updateSummary();
-  });
+
+  // Initialize the picker
+  initCustomColorPicker(
+    container.querySelector('#kit-custom-picker'),
+    activeKitColor,
+    (hex) => {
+      configurator.setZoneColor('side_panels', hex);
+      configurator.setZoneColor('front_fender', hex);
+      // Highlight correct solid color swatch dynamically
+      container.querySelectorAll('.slanted-swatch-circle').forEach(circle => {
+        circle.classList.toggle('selected', circle.dataset.color === hex.toUpperCase());
+      });
+    }
+  );
 }
 
 function renderBikeDrawer(container) {
+  const options = [
+    { name: 'Black', hex: '#111111' },
+    { name: 'Yamaha Blue', hex: '#0055aa' },
+    { name: 'Gold', hex: '#c69c52' },
+    { name: 'Kawasaki Green', hex: '#3bb33b' },
+    { name: 'Nardo Grey', hex: '#5e656d' },
+    { name: 'KTM Orange', hex: '#ff6600' },
+    { name: 'Honda Red', hex: '#e61a1a' },
+    { name: 'Teal', hex: '#2dbbb0' },
+    { name: 'White', hex: '#ffffff' },
+    { name: 'Suzuki Yellow', hex: '#ffd400' },
+    { name: 'Acerbis Grey Hawk', hex: '#a6acb0' }
+  ];
+
+  const currentPlasticColor = state.colors.rear_fender || '#0055aa';
+
   container.innerHTML = `
-    <div class="drawer-panel">
-      <div class="drawer-hd">
-        <span class="drawer-title">Model Colors & Presets</span>
+    <div class="drawer-panel" style="height: 100%; display: flex; flex-direction: column; justify-content: center">
+      <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 8px">
+        <button class="drawer-back-btn btn-close-drawer" aria-label="Close Editor">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" style="width: 20px; height: 20px">
+            <line x1="19" y1="12" x2="5" y2="12"></line>
+            <polyline points="12,19 5,12 12,5"></polyline>
+          </svg>
+        </button>
+        <span class="drawer-title" style="font-size: 16px; font-weight: 900; font-style: italic">PLASTICS</span>
       </div>
-      
-      <div class="materials-columns" style="margin-top: 8px">
-        <div class="material-column">
-          <div class="materials-section-title">Color Presets</div>
-          <div class="presets-grid" style="flex-wrap: wrap; max-height: 120px; overflow-y: auto;">
-            ${COLOR_PRESETS.presets.map(p => `
-              <div class="preset-swatch-card" data-preset-id="${p.id}" style="${state.presetId === p.id ? 'border-color: #000;' : ''}">
-                <div class="preset-swatch-color" style="background: ${p.thumbnail}"></div>
-                <span class="preset-swatch-name">${p.name}</span>
-              </div>
-            `).join('')}
+
+      <div class="plastics-swatches-container">
+        ${options.map(opt => `
+          <div class="plastics-swatch-card ${currentPlasticColor.toUpperCase() === opt.hex.toUpperCase() ? 'selected' : ''}" data-color="${opt.hex}">
+            <div class="plastics-swatch-color" style="background: ${opt.hex}"></div>
+            <div class="plastics-swatch-label-box">${opt.name}</div>
           </div>
-        </div>
-        
-        <div class="material-column">
-          <div class="materials-section-title">Custom Zone Colors</div>
-          <div class="color-picker-grid" style="max-height: 120px; overflow-y: auto;">
-            ${(state.modelConfig?.colorZones || []).map(z => {
-              const col = state.colors[z.id] || z.default;
-              return `
-                <div class="color-picker-card" data-zone-id="${z.id}">
-                  <input type="color" class="custom-picker-input" id="zone-picker-${z.id}" value="${col}">
-                  <div class="color-picker-details">
-                    <span class="color-picker-zone-name">${z.name}</span>
-                    <span class="color-picker-hex-val" id="zone-hex-${z.id}">${col.toUpperCase()}</span>
-                  </div>
-                </div>
-              `;
-            }).join('')}
-          </div>
-        </div>
+        `).join('')}
+      </div>
+
+      <div class="plastics-disclaimer">
+        *Plastics selections are for visual reference only. Colour availability depends on specific bike model. Plastics are not included in the graphics kit price.
       </div>
     </div>
   `;
-  
-  container.querySelectorAll('[data-preset-id]').forEach(card => {
+
+  bindCloseBtn(container);
+  // Attach card click listeners
+  container.querySelectorAll('.plastics-swatch-card').forEach(card => {
     card.addEventListener('click', () => {
-      const id = card.dataset.presetId;
-      const preset = COLOR_PRESETS.presets.find(p => p.id === id);
-      if (preset) {
-        configurator.applyPreset(preset);
-        renderBikeDrawer(container);
-        showToast('✦ Applied preset: ' + preset.name, 'success');
-      }
-    });
-  });
-  
-  container.querySelectorAll('.color-picker-card').forEach(card => {
-    const zoneId = card.dataset.zoneId;
-    const input = card.querySelector(`#zone-picker-${zoneId}`);
-    const hexEl = card.querySelector(`#zone-hex-${zoneId}`);
-    
-    input.addEventListener('input', (e) => {
-      const hex = e.target.value;
-      hexEl.textContent = hex.toUpperCase();
-      configurator.setZoneColor(zoneId, hex);
+      const hex = card.dataset.color;
+      configurator.setZoneColor('front_fender', hex);
+      configurator.setZoneColor('rear_fender', hex);
+      renderBikeDrawer(container);
     });
   });
 }
