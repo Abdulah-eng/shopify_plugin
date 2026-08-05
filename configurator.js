@@ -295,8 +295,14 @@ class MotorcycleConfigurator {
           this.model = gltf.scene;
           this.model.scale.setScalar(modelConfig.scale || 1);
 
-          // Center model
-          const box = new THREE.Box3().setFromObject(this.model);
+          // Center model using ONLY the main ATV assembly's bounding box.
+          // The GLB also has sticker planes at [-3.6, 0, 0] and other vehicles —
+          // using the whole scene would skew the center far to the left.
+          let centerTarget = this.model;
+          this.model.traverse(n => {
+            if (n.name === 'Yamaha_YZF_450_2020') centerTarget = n;
+          });
+          const box = new THREE.Box3().setFromObject(centerTarget);
           const center = box.getCenter(new THREE.Vector3());
           const size = box.getSize(new THREE.Vector3());
           this.model.position.sub(center);
@@ -310,81 +316,70 @@ class MotorcycleConfigurator {
             
             // Hide other vehicles (KTM, Husqvarna, YZF dirt bike) and floating duplicate parts
             if (modelConfig.id === 'yfz450r') {
+              // Walk up to the scene-level root ancestor of this object
               let rootNode = obj;
               while (rootNode.parent && rootNode.parent !== this.model) {
                 rootNode = rootNode.parent;
               }
-              const rootName = (rootNode.name || '').toLowerCase();
-              const rx = rootNode.position.x;
+              const rootName = rootNode.name.toLowerCase();
 
-              // === ROOT-LEVEL BLOCKS ===
-              // Hide entire root assemblies that are clearly not the YFZ 450R ATV
-              const isFromBadRoot = (
-                // Dirt bike shifted to right side (rx = 0.869)
-                rx > 0.6 ||
-                // Stickers/decals at wrong negative X position
-                rx < -0.3 ||
-                // Husqvarna and KTM separate vehicles
-                rootName.includes('husqvarna') ||
-                rootName.includes('ktm')
-              );
+              // Root groups that are dirt-bike duplicates or Husqvarna/KTM parts from
+              // the shared Blender scene file. Identified by analysing the GLB structure.
+              // Only allow the main root (no suffix) and .011 (front shock assembly).
+              const badRootGroups = new Set([
+                'yamaha_yzf_450_2020.001', 'yamaha_yzf_450_2020.002', 'yamaha_yzf_450_2020.003',
+                'yamaha_yzf_450_2020.004', 'yamaha_yzf_450_2020.005',
+                'yamaha_yzf_450_2020.006', 'yamaha_yzf_450_2020.007',
+                'yamaha_yzf_450_2020.008', 'yamaha_yzf_450_2020.009',
+                'yamaha_yzf_450_2020.010',
+                // .011 is allowed — it contains the front shock absorbers
+                'yamaha_yzf_450_2020.012',
+                'yamaha_yzf_450_2020.013', // duplicate .001 handlebar set
+                'yamaha_yzf_450_2020.014', 'yamaha_yzf_450_2020.015',
+                'yamaha_yzf_450_2020.016', // duplicate .002 handlebar set
+                'yamaha_yzf_450_2020.017', 'yamaha_yzf_450_2020.018',
+              ]);
 
-              if (isFromBadRoot) {
-                obj.visible = false;
-                if (obj.isMesh) { obj.castShadow = false; obj.receiveShadow = false; }
-                return;
-              }
-
-              // === NODE 359: Yamaha_YZF_450_2020.013 (Mixed ATV/Dirtbike handlebar group) ===
-              // This node contains BOTH real ATV handlebar tubes AND dirt bike handlebar parts.
-              // Whitelist only the real ATV parts; hide everything else in this group.
-              if (rootName === 'yamaha_yzf_450_2020.013') {
-                const ATV_HANDLEBAR_WHITELIST = new Set([
-                  'black_tubes_handlebar00',
-                  'black_tubes_handlebar01',
-                  'black_tubes_handlebar02',
-                  'black_tubes_handlebar03',
-                  'black_tubes_handlebar04',
-                  'black_tubes_handlebar05',
-                  'black_tubes_handlebar05.002',
-                  'black_tubes_handlebar06',
-                  'black_tubes_handlebar07',
-                  'handles00',
-                  'handles01',
-                  'handlebar_chrome00',
-                ]);
-                if (!ATV_HANDLEBAR_WHITELIST.has(objName)) {
-                  obj.visible = false;
-                  if (obj.isMesh) { obj.castShadow = false; obj.receiveShadow = false; }
-                  return;
-                }
-              }
-
-              // === INDIVIDUAL MESH FILTERS ===
-              // Misc floating/duplicate objects not caught by root filters
               const isToHide = (
+                badRootGroups.has(rootName) ||
+                objName === 'frame_chrome_f18' ||
+                objName === 'yamaha_f' ||
+                objName === 'handlebar_chrome00' ||
+                objName === 'handles00' ||
+                objName === 'handles01' ||
+                objName === 'red_part' ||
+                objName.includes('yamaha_yzf_450_2020.001') ||
+                objName.includes('yamaha_yzf_450_2020.002') ||
+                objName.includes('yamaha_yzf_450_2020.003') ||
+                objName.includes('yamaha_yzf_450_2020.005') ||
+                objName.includes('husqvarna') || 
+                objName.includes('ktm') || 
+                objName.includes('rim_second') ||
                 objName === 'plano' ||
                 objName === 'plane' ||
                 (objName.startsWith('plane.') && !objName.includes('.006') && !objName.includes('.007') && !objName.includes('.008') && !objName.includes('.009')) ||
                 objName.includes('render.') ||
-                objName === 'handle.002' ||
-                // Stray Blender helper geometry — hide anything whose ROOT node
-                // is one of these Blender default primitives
-                /^cylinder(\.\d+)?$/.test(rootName) ||
-                /^circle(\.\d+)?$/.test(rootName) ||
-                /^cube(\.\d+)?$/.test(rootName) ||
-                /^bolt(\.\d+)?$/.test(rootName) ||
-                /^hex nut(\.\d+)?$/.test(rootName) ||
-                rootName === 'bolt.000'
+                // Stray Blender default primitive objects (Cylinder.xxx, Circle.xxx, Cube.xxx, Bolt, Hex Nut)
+                // YFZ 450R parts all have descriptive prefixed names, never generic Blender primitives
+                /^cylinder(\.\d+)?$/.test(objName) ||
+                /^circle(\.\d+)?$/.test(objName) ||
+                /^cube(\.\d+)?$/.test(objName) ||
+                /^bolt(\.\d+)?$/.test(objName) ||
+                objName === 'hex nut' ||
+                // Duplicate handlebar sets — all real YFZ 450R parts are in the
+                // main root group; duplicates in .013/.016 groups are already caught
+                // by badRootGroups. These individual catches handle edge cases:
+                (objName.startsWith('handlebar_') && objName.endsWith('.001')) ||
+                (objName.startsWith('handlebar_') && objName.endsWith('.002')) ||
+                objName === 'handle.002'
               );
-
-              if (objName.includes('cylinder.010') || objName.includes('cube.001') || objName.includes('cylinder.013') || objName.includes('cube.002')) {
-                console.log(`[TRAVERSE DEBUG] Mesh: "${objName}" | rootName: "${rootName}" | rx: ${rx} | isFromBadRoot: ${isFromBadRoot} | isToHide: ${isToHide}`);
-              }
-
+              
               if (isToHide) {
                 obj.visible = false;
-                if (obj.isMesh) { obj.castShadow = false; obj.receiveShadow = false; }
+                if (obj.isMesh) {
+                  obj.castShadow = false;
+                  obj.receiveShadow = false;
+                }
                 return;
               }
             }
