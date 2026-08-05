@@ -455,18 +455,34 @@ class MotorcycleConfigurator {
           });
 
           // ── WORLD-SPACE SANITY FILTER ──────────────────────────────────────────
-          // Catches any geometry that survived the name-based filters but is clearly
-          // NOT part of the ATV: parts below the ground plane, high in the sky, or
-          // far to the side. The ATV fits within roughly ±1.5 units of world origin.
+          // Catches any geometry that survived name-based filters but is clearly
+          // NOT part of the ATV. Uses the GEOMETRIC BBOX CENTER (more accurate than
+          // the pivot point) so small scattered pieces are caught even if their
+          // local origin is inside bounds.
+          //
+          // ATV real-world dims: width ~0.85m, length ~1.5m, height ~0.95m
+          // At scale 0.85: width ~0.72m, length ~1.28m, height ~0.81m from center
+          // Bounds below give a generous ≥30% safety margin on each axis.
+          //
+          // X (width):  ±1.05  — handlebars reach max ±0.45, brackets at -1.2 are caught
+          // Z (length): ±1.15  — front/rear wheels reach max ±0.65
+          // Y (height):  −0.12 → 1.85  — from just below ground to above handlebars
+          const atvBoundsMin = new THREE.Vector3(-1.05, -0.12, -1.15);
+          const atvBoundsMax = new THREE.Vector3( 1.05,  1.85,  1.15);
+          const _meshBbox = new THREE.Box3();
+          const _meshCenter = new THREE.Vector3();
+
           this.model.traverse(obj => {
             if (!obj.isMesh || !obj.visible) return;
-            const wp = new THREE.Vector3();
-            obj.getWorldPosition(wp);
+            _meshBbox.setFromObject(obj);
+            _meshBbox.getCenter(_meshCenter);
             const isStray = (
-              wp.y < -0.15 ||          // below ground plane
-              wp.y > 2.0 ||            // high in sky (dirt-bike forks at Y=37+)
-              Math.abs(wp.x) > 2.0 ||  // too far left/right
-              Math.abs(wp.z) > 2.0     // too far front/back
+              _meshCenter.y < atvBoundsMin.y ||
+              _meshCenter.y > atvBoundsMax.y ||
+              _meshCenter.x < atvBoundsMin.x ||
+              _meshCenter.x > atvBoundsMax.x ||
+              _meshCenter.z < atvBoundsMin.z ||
+              _meshCenter.z > atvBoundsMax.z
             );
             if (isStray) {
               obj.visible = false;
