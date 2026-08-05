@@ -378,6 +378,10 @@ class MotorcycleConfigurator {
                 rootName === 'bolt.000'
               );
 
+              if (objName.includes('cylinder.010') || objName.includes('cube.001') || objName.includes('cylinder.013') || objName.includes('cube.002')) {
+                console.log(`[TRAVERSE DEBUG] Mesh: "${objName}" | rootName: "${rootName}" | rx: ${rx} | isFromBadRoot: ${isFromBadRoot} | isToHide: ${isToHide}`);
+              }
+
               if (isToHide) {
                 obj.visible = false;
                 if (obj.isMesh) { obj.castShadow = false; obj.receiveShadow = false; }
