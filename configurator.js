@@ -41,6 +41,8 @@ const state = {
   logo: 'none',
   logoImage: null,
   presetId: null,
+  riderName: 'HELLO',
+  riderNumber: '333',
 
   // Multi-plate configuration state
   activePlate: 'front',
@@ -613,23 +615,24 @@ class MotorcycleConfigurator {
     // Front Plate sits at X ~ 512, Y ~ 1536
     drawBackgroundPlate(512, 1536, 400, 480);
 
-    // Helper: draw text according to coordinate sliders
-    const drawPlateRiderText = (p) => {
+    // Helper: draw text and name relative to coordinate sliders
+    const drawPlateRiderText = (p, type) => {
       const fontFamily = fontMap[p.font] || fontMap.bebas;
+      const num = p.number || '333';
+      const name = (state.riderName || 'HELLO').toUpperCase();
+
       ctx.save();
       ctx.translate(p.x, p.y);
       ctx.rotate((p.rotation * Math.PI) / 180);
       ctx.scale(p.stretchH, p.stretchV);
       
+      // 1. Draw Rider Number
       ctx.font = `bold ${p.fontSize}px ${fontFamily}`;
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      
       if (ctx.letterSpacing !== undefined) {
         ctx.letterSpacing = (p.letterSpacing * p.fontSize) + 'px';
       }
-      
-      const num = p.number || '';
       
       if (p.strokeWidth > 0) {
         ctx.lineWidth = p.strokeWidth;
@@ -639,13 +642,56 @@ class MotorcycleConfigurator {
       
       ctx.fillStyle = p.color;
       ctx.fillText(num, 0, 0);
+
+      // Reset letterSpacing for name
+      if (ctx.letterSpacing !== undefined) {
+        ctx.letterSpacing = '0px';
+      }
+
+      // 2. Draw Rider Name
+      const nameSize = Math.round(p.fontSize * 0.22);
+      ctx.font = `bold ${nameSize}px ${fontFamily}`;
+      
+      if (type === 'front') {
+        // Front Plate layout: Name is in top-left corner
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'bottom';
+        const nameX = -p.fontSize * 0.65;
+        const nameY = -p.fontSize * 0.45;
+        
+        ctx.fillStyle = p.color;
+        ctx.fillText(name, nameX, nameY);
+        
+        // Draw sponsor logo in top-right of front plate
+        if (state.logoImage) {
+          const logoW = p.fontSize * 0.35;
+          const logoH = logoW * 0.55;
+          ctx.drawImage(state.logoImage, p.fontSize * 0.32, -p.fontSize * 0.62, logoW, logoH);
+        }
+      } else {
+        // Side Plate layout: Name is at the bottom center, underneath the number
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'top';
+        const nameY = p.fontSize * 0.52;
+        
+        ctx.fillStyle = p.color;
+        ctx.fillText(name, 0, nameY);
+        
+        // Draw sponsor logo in top-left of side plate
+        if (state.logoImage) {
+          const logoW = p.fontSize * 0.28;
+          const logoH = logoW * 0.55;
+          ctx.drawImage(state.logoImage, -p.fontSize * 0.65, -p.fontSize * 0.62, logoW, logoH);
+        }
+      }
+      
       ctx.restore();
     };
 
     // Draw active plates text
-    drawPlateRiderText(state.plates.front);
-    drawPlateRiderText(state.plates.left);
-    drawPlateRiderText(state.plates.right);
+    drawPlateRiderText(state.plates.front, 'front');
+    drawPlateRiderText(state.plates.left, 'left');
+    drawPlateRiderText(state.plates.right, 'right');
 
     // Draw Sponsor Logo if selected (e.g. top-left quadrant)
     if (state.logoImage) {
