@@ -16,13 +16,52 @@
   <meta name="description" content="Customize your ATV graphic kit in real-time 3D. Design colors, rider name, number, fonts and logos — then add directly to cart.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Orbitron:wght@400;500;600;700;900&family=Racing+Sans+One&family=Russo+One&family=Bangers&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css">
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Orbitron:wght@400;500;600;700;900&family=Racing+Sans+One&family=Russo+One&family=Bangers&family=Inter:wght@300;400;500;600;700;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css?v=5">
 </head>
 <body>
 
+<!-- PERSONALIZATION GATE OVERLAY -->
+<div id="gate-container">
+  <div class="gate-header">
+    <button class="gate-back-btn" aria-label="Go back">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+        <line x1="19" y1="12" x2="5" y2="12"></line>
+        <polyline points="12,19 5,12 12,5"></polyline>
+      </svg>
+    </button>
+    <span class="gate-header-title">SELECT GRAPHIC KIT</span>
+  </div>
+
+  <div class="gate-content">
+    <h1 class="gate-title">PERSONALIZE YOUR KIT</h1>
+    <p class="gate-subtitle">Add your rider name and number to see them on your bike.<br>You can skip and add them later.</p>
+    
+    <div class="gate-form">
+      <input type="text" id="gate-rider-name" class="gate-input" placeholder="Rider Name" maxlength="16" autocomplete="off" spellcheck="false">
+      <input type="text" id="gate-rider-number" class="gate-input" placeholder="Rider Number" maxlength="4" autocomplete="off" inputmode="numeric">
+    </div>
+
+    <div class="gate-actions">
+      <button class="gate-btn skip" id="gate-skip-btn">Skip</button>
+      <button class="gate-btn next" id="gate-next-btn">Next</button>
+    </div>
+  </div>
+
+  <div class="gate-watermark-row">
+    <div class="gate-watermark">RIVAL</div>
+    <div class="gate-watermark">RIVAL</div>
+    <div class="gate-watermark">RIVAL</div>
+    <div class="gate-watermark">RIVAL</div>
+  </div>
+
+  <div class="gate-footer-badge">
+    <span class="badge-icon">G</span> Customization powered by Garage 360
+  </div>
+</div>
+
 <!-- LOADING SCREEN -->
-<div id="loading-screen">
+<div id="loading-screen" class="hidden">
   <div class="loading-logo">
     <div class="loading-logo-icon">
       <svg viewBox="0 0 36 36" fill="none">
@@ -48,266 +87,95 @@
 </div>
 
 <!-- APP SHELL -->
-<div id="app">
+<div id="app" class="hidden">
 
-  <!-- ── LEFT ICON STRIP ── -->
-  <div id="left-strip">
-
-    <!-- Brand -->
-    <a href="https://4ddesignsgraphics.com" class="strip-brand" target="_blank" rel="noopener" title="4D Design Graphics">
-      <div class="strip-brand-hex">
-        <svg viewBox="0 0 36 36" fill="none">
-          <path d="M8 10h8l-4 7h5l-9 9 3-8H7l1-8z" fill="#000"/>
-          <text x="19" y="24" font-family="Arial Black" font-weight="900" font-size="11" fill="#000">D</text>
-        </svg>
-      </div>
-    </a>
-
-    <!-- Product info card -->
-    <div class="strip-product-card">
-      <div class="strip-model-name" id="strip-model-name">YFZ 450R</div>
-      <div class="strip-product-sub">Graphic Kit</div>
-      <div class="strip-price" id="price-value">PKR 48,000</div>
+  <!-- ── TOP-LEFT PRODUCT CARD ── -->
+  <div class="product-badge">
+    <div class="product-badge-info">
+      <div class="product-badge-name" id="product-model-name">YFZ 450R</div>
+      <div class="product-badge-sub">GRAPHIC KIT</div>
     </div>
-
-    <!-- Add to Cart -->
-    <button class="strip-cart-btn" id="btn-add-cart">
+    <div class="product-badge-price" id="price-value">PKR 48,000</div>
+    <button class="settings-circle-btn" aria-label="Settings">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="12" cy="12" r="3"/>
+        <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/>
+      </svg>
+    </button>
+  </div>
+
+  <!-- ── LEFT SIDEBAR ACTION STRIP ── -->
+  <div id="left-actions-strip">
+    <!-- Add to Cart -->
+    <button class="oval-action-btn primary" id="btn-add-cart">
+      <svg class="icon-cart" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
         <path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/>
         <line x1="3" y1="6" x2="21" y2="6"/>
         <path d="M16 10a4 4 0 01-8 0"/>
       </svg>
-      <span class="cart-label">Add to Cart</span>
-      <svg class="cart-spinner" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <circle cx="12" cy="12" r="10"/>
-      </svg>
+      <span>Add to Cart</span>
+      <div class="cart-spinner hidden"></div>
     </button>
 
-    <!-- Save Kit -->
-    <button class="strip-save-btn" id="btn-save-kit" title="Save your kit configuration">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+    <!-- Save Your Kit -->
+    <button class="oval-action-btn secondary" id="btn-save-kit">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
         <path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/>
         <polyline points="17,21 17,13 7,13 7,21"/>
-        <polyline points="7,3 7,8 15,8"/>
       </svg>
-      <span>Save Kit</span>
+      <span>Save Your Kit!</span>
     </button>
 
     <!-- Divider -->
     <div class="strip-divider"></div>
 
-    <!-- Icon Tab Nav -->
-    <nav class="icon-nav" id="icon-nav">
+    <!-- Camera / View buttons -->
+    <button class="circle-icon-btn" id="btn-screenshot" title="Capture Screenshot">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/>
+        <circle cx="12" cy="13" r="4"/>
+      </svg>
+    </button>
+    
+    <button class="circle-icon-btn" id="btn-reset-cam" title="Reset Camera">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/>
+      </svg>
+    </button>
 
-      <button class="icon-tab active" data-tab="panel-kit" id="tab-kit" title="Kit Options">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-          <circle cx="12" cy="12" r="3"/>
-          <path d="M19.07 4.93a10 10 0 010 14.14M4.93 4.93a10 10 0 000 14.14"/>
-          <path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
-        </svg>
-        <span>KIT</span>
-      </button>
+    <button class="circle-icon-btn" id="btn-toggle-grid" title="Toggle Grid">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+        <line x1="9" y1="3" x2="9" y2="21"/>
+        <line x1="15" y1="3" x2="15" y2="21"/>
+        <line x1="3" y1="9" x2="21" y2="9"/>
+        <line x1="3" y1="15" x2="21" y2="15"/>
+      </svg>
+    </button>
 
-      <button class="icon-tab" data-tab="panel-colors" id="tab-colors" title="Colors">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-          <circle cx="13.5" cy="6.5" r="1.5" fill="currentColor"/>
-          <circle cx="17.5" cy="10.5" r="1.5" fill="currentColor"/>
-          <circle cx="8.5" cy="7.5" r="1.5" fill="currentColor"/>
-          <circle cx="6.5" cy="12.5" r="1.5" fill="currentColor"/>
-          <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10c1.1 0 2-.9 2-2 0-.53-.21-1.01-.54-1.37-.32-.36-.52-.84-.52-1.37 0-1.1.9-2 2-2h2.35C19.95 15.26 22 13.76 22 12c0-5.52-4.48-10-10-10z"/>
-        </svg>
-        <span>COLORS</span>
-      </button>
+    <button class="circle-icon-btn" id="btn-toggle-rotate" title="Toggle Auto-Rotate">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 11-.57-8.38l5.67-5.67"/>
+      </svg>
+    </button>
+  </div>
 
-      <button class="icon-tab" data-tab="panel-text" id="tab-text" title="Rider Name & Number">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-          <path d="M4 7V4h16v3"/>
-          <path d="M9 20h6"/>
-          <line x1="12" y1="4" x2="12" y2="20"/>
-        </svg>
-        <span>RIDER ID</span>
-      </button>
-
-      <button class="icon-tab" data-tab="panel-logo" id="tab-logo" title="Logo">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-          <polygon points="12,2 15.09,8.26 22,9.27 17,14.14 18.18,21.02 12,17.77 5.82,21.02 7,14.14 2,9.27 8.91,8.26"/>
-        </svg>
-        <span>LOGO</span>
-      </button>
-
-    </nav>
-
-    <!-- Bottom: Screenshot -->
-    <div class="strip-bottom">
-      <button class="strip-icon-btn" id="btn-screenshot" title="Save screenshot">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-          <path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/>
-          <circle cx="12" cy="13" r="4"/>
-        </svg>
-      </button>
+  <!-- ── TOP-RIGHT 2D LAYOUT PREVIEW PANEL ── -->
+  <div id="layout-preview-panel">
+    <div class="layout-preview-title">GRAPHIC KIT LAYOUT</div>
+    <div class="layout-preview-container">
+      <canvas id="layout-preview-canvas" width="512" height="512"></canvas>
     </div>
-
-  </div><!-- /#left-strip -->
-
-  <!-- ── SLIDING CONFIG PANEL ── -->
-  <div id="config-panel">
-
-    <!-- Panel: Kit Options -->
-    <div class="panel-page active" id="panel-kit">
-      <div class="panel-hd">
-        <span class="panel-hd-title">KIT OPTIONS</span>
-        <button class="panel-close-btn" data-close>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-        </button>
-      </div>
-      <div class="panel-body">
-        <div class="panel-section-label">Year</div>
-        <div class="option-pills" id="year-pills"></div>
-
-        <div class="panel-section-label">Plastics</div>
-        <div class="option-pills" id="plastics-pills"></div>
-
-        <div class="panel-section-label">Front Fender</div>
-        <div class="option-pills" id="fender-pills"></div>
-
-        <div class="panel-section-label">Print Base</div>
-        <div class="option-pills" id="printbase-pills"></div>
-
-        <div class="panel-section-label">Laminate</div>
-        <div class="option-pills" id="laminate-pills"></div>
-
-        <div class="panel-section-label">Wheels Graphics</div>
-        <div class="option-pills" id="wheels-pills"></div>
-      </div>
+    <div class="layout-preview-actions">
+      <button class="layout-btn reset" id="btn-layout-reset">RESET VIEW</button>
+      <button class="layout-btn focus" id="btn-layout-focus">FOCUS SELECTED</button>
     </div>
-
-    <!-- Panel: Colors -->
-    <div class="panel-page" id="panel-colors">
-      <div class="panel-hd">
-        <span class="panel-hd-title">COLORS</span>
-        <button class="panel-close-btn" data-close>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-        </button>
-      </div>
-      <div class="panel-body">
-        <div class="panel-section-label">Color Presets</div>
-        <div class="preset-grid" id="preset-grid"></div>
-
-        <div class="panel-section-label" style="margin-top:20px">Custom Colors</div>
-        <div class="color-zone-tabs" id="color-zone-tabs"></div>
-        <div id="color-pickers"></div>
-      </div>
-    </div>
-
-    <!-- Panel: Rider ID -->
-    <div class="panel-page" id="panel-text">
-      <div class="panel-hd">
-        <span class="panel-hd-title">RIDER ID</span>
-        <button class="panel-close-btn" data-close>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-        </button>
-      </div>
-      <div class="panel-body">
-        <div class="panel-section-label">Rider Name</div>
-        <input type="text" id="input-rider-name" class="panel-input" placeholder="e.g. FAZAL" maxlength="16" autocomplete="off" spellcheck="false">
-        <div class="text-preview-box" id="name-preview">YOUR NAME</div>
-
-        <div class="panel-section-label" style="margin-top:16px">Name Color</div>
-        <div class="text-color-row">
-          <div class="text-color-dot selected" data-color="#FFFFFF" data-target="name" style="background:#FFFFFF; border:2px solid #bbb;" title="White"></div>
-          <div class="text-color-dot" data-color="#000000" data-target="name" style="background:#000000;" title="Black"></div>
-          <div class="text-color-dot" data-color="#D4FF00" data-target="name" style="background:#D4FF00;" title="4D Yellow"></div>
-          <div class="text-color-dot" data-color="#FF2233" data-target="name" style="background:#FF2233;" title="Red"></div>
-          <div class="text-color-dot" data-color="#0066FF" data-target="name" style="background:#0066FF;" title="Blue"></div>
-          <div class="text-color-dot" data-color="#FF6600" data-target="name" style="background:#FF6600;" title="Orange"></div>
-          <div class="text-color-dot" data-color="#FFD700" data-target="name" style="background:#FFD700;" title="Gold"></div>
-          <div class="text-color-dot" data-color="#AAAAAA" data-target="name" style="background:#AAAAAA;" title="Silver"></div>
-        </div>
-
-        <div class="panel-section-label" style="margin-top:20px">Race Number</div>
-        <input type="text" id="input-rider-number" class="panel-input" placeholder="e.g. 74" maxlength="4" autocomplete="off" inputmode="numeric">
-        <div class="text-preview-box number-preview-box" id="number-preview">000</div>
-
-        <div class="panel-section-label" style="margin-top:16px">Number Color</div>
-        <div class="text-color-row">
-          <div class="text-color-dot selected" data-color="#FFFFFF" data-target="number" style="background:#FFFFFF; border:2px solid #bbb;" title="White"></div>
-          <div class="text-color-dot" data-color="#000000" data-target="number" style="background:#000000;" title="Black"></div>
-          <div class="text-color-dot" data-color="#D4FF00" data-target="number" style="background:#D4FF00;" title="4D Yellow"></div>
-          <div class="text-color-dot" data-color="#FF2233" data-target="number" style="background:#FF2233;" title="Red"></div>
-          <div class="text-color-dot" data-color="#0066FF" data-target="number" style="background:#0066FF;" title="Blue"></div>
-          <div class="text-color-dot" data-color="#FF6600" data-target="number" style="background:#FF6600;" title="Orange"></div>
-          <div class="text-color-dot" data-color="#FFD700" data-target="number" style="background:#FFD700;" title="Gold"></div>
-          <div class="text-color-dot" data-color="#AAAAAA" data-target="number" style="background:#AAAAAA;" title="Silver"></div>
-        </div>
-
-        <div class="panel-section-label" style="margin-top:20px">Font Style</div>
-        <div class="font-grid" id="font-grid"></div>
-      </div>
-    </div>
-
-    <!-- Panel: Logo -->
-    <div class="panel-page" id="panel-logo">
-      <div class="panel-hd">
-        <span class="panel-hd-title">LOGO</span>
-        <button class="panel-close-btn" data-close>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-        </button>
-      </div>
-      <div class="panel-body">
-        <p class="panel-hint">Add a sponsor or brand logo to your graphic kit.</p>
-        <div class="logo-grid" id="logo-grid"></div>
-      </div>
-    </div>
-
-  </div><!-- /#config-panel -->
+  </div>
 
   <!-- ── 3D VIEWER ── -->
   <main id="viewer" role="main" aria-label="3D ATV Preview">
-
     <canvas id="three-canvas" role="img" aria-label="Interactive 3D ATV configurator"></canvas>
-
-    <!-- Viewer loading overlay -->
-    <div id="viewer-loading" style="display:none; position:absolute; inset:0; background:rgba(255,255,255,0.92); backdrop-filter:blur(8px); align-items:center; justify-content:center; flex-direction:column; gap:20px; z-index:50;">
-      <div style="width:44px;height:44px;border:3px solid rgba(0,0,0,0.1);border-top-color:#0a0a0a;border-radius:50%;animation:spin 0.8s linear infinite;"></div>
-      <div style="font-size:11px;letter-spacing:2px;color:#888;text-transform:uppercase;" id="viewer-loading-label">LOADING MODEL…</div>
-      <div style="width:200px;height:2px;background:#e0e0e0;border-radius:2px;overflow:hidden;">
-        <div id="viewer-progress" style="height:100%;background:#0a0a0a;width:0%;transition:width 0.3s;"></div>
-      </div>
-    </div>
-
-    <!-- Viewer controls (bottom right) -->
-    <div class="viewer-controls">
-      <button class="viewer-btn" id="btn-view-front" title="Front view">
-        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5">
-          <rect x="3" y="5" width="14" height="10" rx="2"/>
-          <line x1="10" y1="5" x2="10" y2="15"/>
-        </svg>
-      </button>
-      <button class="viewer-btn" id="btn-view-rear" title="Side view">
-        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5">
-          <path d="M3 10l4-5h6l4 5-4 5H7z"/>
-        </svg>
-      </button>
-      <button class="viewer-btn" id="btn-view-top" title="Top view">
-        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5">
-          <circle cx="10" cy="10" r="7"/>
-          <path d="M10 4v6l3 3"/>
-        </svg>
-      </button>
-      <div class="viewer-sep"></div>
-      <button class="viewer-btn" id="btn-reset-cam" title="Reset camera">
-        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5">
-          <path d="M4 10a6 6 0 1010.9-3.4M4 10V6m0 4H8"/>
-        </svg>
-      </button>
-    </div>
-
-    <!-- Auto-rotate badge -->
-    <div class="auto-rotate-badge" id="auto-rotate-badge">
-      <div class="dot"></div>
-      <span class="badge-text">AUTO ROTATE</span>
-    </div>
-
+    
     <!-- Drag hint -->
     <div class="viewer-hint" id="viewer-hint">
       <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5">
@@ -316,8 +184,81 @@
       </svg>
       Drag to rotate · Scroll to zoom
     </div>
-
   </main>
+
+  <!-- ── CUSTOM CONTROL DRAWER (BOTTOM WINDOW) ── -->
+  <div id="bottom-drawer">
+    <!-- Sliding customizable content page -->
+    <div id="drawer-content-area">
+      <!-- DYNAMIC CONTENT IS INJECTED HERE -->
+    </div>
+  </div>
+
+  <!-- ── BOTTOM NAVIGATION CATEGORY TABS ── -->
+  <div id="bottom-category-tabs">
+    <button class="bottom-tab-btn" data-tab="logos">
+      <div class="bottom-tab-skew"></div>
+      <div class="bottom-tab-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polygon points="12,2 15.09,8.26 22,9.27 17,14.14 18.18,21.02 12,17.77 5.82,21.02 7,14.14 2,9.27 8.91,8.26"/>
+        </svg>
+      </div>
+      <span class="bottom-tab-label">LOGOS</span>
+    </button>
+
+    <button class="bottom-tab-btn active" data-tab="rider-id">
+      <div class="bottom-tab-skew"></div>
+      <div class="bottom-tab-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M4 7V4h16v3M9 20h6M12 4v16"/>
+        </svg>
+      </div>
+      <span class="bottom-tab-label">RIDER ID</span>
+    </button>
+
+    <button class="bottom-tab-btn" data-tab="materials">
+      <div class="bottom-tab-skew"></div>
+      <div class="bottom-tab-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+        </svg>
+      </div>
+      <span class="bottom-tab-label">MATERIALS</span>
+    </button>
+
+    <button class="bottom-tab-btn" data-tab="plate">
+      <div class="bottom-tab-skew"></div>
+      <div class="bottom-tab-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+        </svg>
+      </div>
+      <span class="bottom-tab-label">PLATE</span>
+    </button>
+
+    <button class="bottom-tab-btn" data-tab="kit">
+      <div class="bottom-tab-skew"></div>
+      <div class="bottom-tab-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10"/>
+          <path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/>
+          <line x1="2" y1="12" x2="22" y2="12"/>
+        </svg>
+      </div>
+      <span class="bottom-tab-label">KIT</span>
+    </button>
+
+    <button class="bottom-tab-btn" data-tab="bike">
+      <div class="bottom-tab-skew"></div>
+      <div class="bottom-tab-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M5.5 16a3.5 3.5 0 100-7 3.5 3.5 0 000 7zM18.5 16a3.5 3.5 0 100-7 3.5 3.5 0 000 7z"/>
+          <path d="M12 5h3.5l2.5 4h2v2M5.5 12.5h13"/>
+        </svg>
+      </div>
+      <span class="bottom-tab-label">BIKE</span>
+    </button>
+  </div>
 
 </div><!-- /#app -->
 
@@ -341,142 +282,12 @@
   </div>
 </div>
 
-<!-- MOBILE BOTTOM NAV (hidden on desktop via CSS) -->
-<div id="mobile-bottom-nav">
-
-  <button class="mob-nav-btn" data-tab="panel-kit" id="mob-tab-kit">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-      <circle cx="12" cy="12" r="3"/>
-      <path d="M19.07 4.93a10 10 0 010 14.14M4.93 4.93a10 10 0 000 14.14"/>
-    </svg>
-    KIT
-  </button>
-
-  <button class="mob-nav-btn" data-tab="panel-colors" id="mob-tab-colors">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-      <circle cx="13.5" cy="6.5" r="1.5" fill="currentColor"/>
-      <circle cx="17.5" cy="10.5" r="1.5" fill="currentColor"/>
-      <circle cx="8.5" cy="7.5" r="1.5" fill="currentColor"/>
-      <circle cx="6.5" cy="12.5" r="1.5" fill="currentColor"/>
-      <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10c1.1 0 2-.9 2-2 0-.53-.21-1.01-.54-1.37-.32-.36-.52-.84-.52-1.37 0-1.1.9-2 2-2h2.35C19.95 15.26 22 13.76 22 12c0-5.52-4.48-10-10-10z"/>
-    </svg>
-    COLORS
-  </button>
-
-  <button class="mob-nav-btn" data-tab="panel-text" id="mob-tab-text">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-      <path d="M4 7V4h16v3"/>
-      <path d="M9 20h6"/>
-      <line x1="12" y1="4" x2="12" y2="20"/>
-    </svg>
-    RIDER
-  </button>
-
-  <button class="mob-nav-btn" data-tab="panel-logo" id="mob-tab-logo">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-      <polygon points="12,2 15.09,8.26 22,9.27 17,14.14 18.18,21.02 12,17.77 5.82,21.02 7,14.14 2,9.27 8.91,8.26"/>
-    </svg>
-    LOGO
-  </button>
-
-  <button class="mob-nav-btn cart-mob" id="btn-add-cart-mobile">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-      <path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/>
-      <line x1="3" y1="6" x2="21" y2="6"/>
-      <path d="M16 10a4 4 0 01-8 0"/>
-    </svg>
-    <svg class="cart-spinner" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-      <circle cx="12" cy="12" r="10"/>
-    </svg>
-    <span class="mob-cart-label">ADD</span>
-  </button>
-
-</div>
-
 <!-- TOAST CONTAINER -->
 <div id="toast-container" aria-live="polite"></div>
 
 <!-- SCRIPTS -->
 <script src="shopify/cart-integration.js"></script>
-<script type="module" src="configurator.js?v=4"></script>
-
-<!-- Tab switching (desktop + mobile) -->
-<script>
-(function() {
-  var panelOpen = false;
-  var TRANSITION_MS = 360; // must match CSS transition duration
-
-  function triggerResize() {
-    setTimeout(function() {
-      if (window._configuratorEngine) {
-        window._configuratorEngine.forceResize();
-      }
-    }, TRANSITION_MS);
-  }
-
-  function openPanel(tabId) {
-    document.querySelectorAll('.panel-page').forEach(function(p) { p.classList.remove('active'); });
-    var page = document.getElementById(tabId);
-    if (page) page.classList.add('active');
-    document.getElementById('config-panel').classList.add('open');
-    panelOpen = true;
-    triggerResize();
-  }
-
-  function closePanel() {
-    document.getElementById('config-panel').classList.remove('open');
-    panelOpen = false;
-    document.querySelectorAll('.icon-tab, .mob-nav-btn[data-tab]').forEach(function(t) { t.classList.remove('active'); });
-    triggerResize();
-  }
-
-  // Desktop icon tabs
-  document.querySelectorAll('.icon-tab').forEach(function(tab) {
-    tab.addEventListener('click', function() {
-      var tabId = tab.dataset.tab;
-      var alreadyActive = tab.classList.contains('active') && panelOpen;
-      document.querySelectorAll('.icon-tab').forEach(function(t) { t.classList.remove('active'); });
-      if (alreadyActive) { closePanel(); return; }
-      tab.classList.add('active');
-      // Sync mobile tab highlight
-      var mobEquiv = document.querySelector('.mob-nav-btn[data-tab="' + tabId + '"]');
-      document.querySelectorAll('.mob-nav-btn[data-tab]').forEach(function(m) { m.classList.remove('active'); });
-      if (mobEquiv) mobEquiv.classList.add('active');
-      openPanel(tabId);
-    });
-  });
-
-  // Mobile bottom nav tabs
-  document.querySelectorAll('.mob-nav-btn[data-tab]').forEach(function(btn) {
-    btn.addEventListener('click', function() {
-      var tabId = btn.dataset.tab;
-      var alreadyActive = btn.classList.contains('active') && panelOpen;
-      document.querySelectorAll('.mob-nav-btn[data-tab]').forEach(function(b) { b.classList.remove('active'); });
-      // Sync desktop tab highlight
-      document.querySelectorAll('.icon-tab').forEach(function(t) { t.classList.remove('active'); });
-      var deskEquiv = document.querySelector('.icon-tab[data-tab="' + tabId + '"]');
-      if (alreadyActive) { closePanel(); return; }
-      btn.classList.add('active');
-      if (deskEquiv) deskEquiv.classList.add('active');
-      openPanel(tabId);
-    });
-  });
-
-  // Close button inside panels
-  document.querySelectorAll('[data-close]').forEach(function(btn) {
-    btn.addEventListener('click', closePanel);
-  });
-
-  // Open kit panel by default after model loads
-  setTimeout(function() {
-    var kitTab = document.getElementById('tab-kit');
-    var mobKitTab = document.getElementById('mob-tab-kit');
-    if (kitTab) kitTab.classList.add('active');
-    if (mobKitTab) mobKitTab.classList.add('active');
-    openPanel('panel-kit');
-  }, 900);
-})();
-</script>
+<script type="module" src="configurator.js?v=5"></script>
 
 </body>
 </html>

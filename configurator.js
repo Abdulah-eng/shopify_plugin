@@ -31,20 +31,24 @@ async function loadConfigs() {
 const state = {
   modelId: null,
   modelConfig: null,
-  year: null,
-  plastics: null,
-  frontFender: null,
-  printBase: null,
-  laminate: null,
-  wheelsGraphics: null,
+  year: '2025',
+  plastics: 'Stock OEM',
+  frontFender: 'Standard',
+  printBase: 'Standard White',
+  laminate: 'Standard Gloss',
+  wheelsGraphics: 'No Decals',
   colors: {},           // { zoneId: hexColor }
-  riderName: '',
-  riderNumber: '',
-  nameColor: '#FFFFFF',
-  numberColor: '#FFFFFF',
-  nameFont: 'bebas',
   logo: 'none',
+  logoImage: null,
   presetId: null,
+
+  // Multi-plate configuration state
+  activePlate: 'front',
+  plates: {
+    front: { number: '333', font: 'bebas', color: '#000000', strokeColor: '#ffffff', x: 512, y: 1536, fontSize: 240, rotation: 0, stretchH: 1.0, stretchV: 1.0, letterSpacing: 0.02, strokeWidth: 4 },
+    left:  { number: '333', font: 'bebas', color: '#000000', strokeColor: '#ffffff', x: 1180, y: 1024, fontSize: 200, rotation: 0, stretchH: 1.0, stretchV: 1.0, letterSpacing: 0.02, strokeWidth: 4 },
+    right: { number: '333', font: 'bebas', color: '#000000', strokeColor: '#ffffff', x: 680, y: 1024, fontSize: 200, rotation: 0, stretchH: 1.0, stretchV: 1.0, letterSpacing: 0.02, strokeWidth: 4 },
+  }
 };
 
 /* ============================================================
@@ -99,14 +103,13 @@ class MotorcycleConfigurator {
 
   _setupScene() {
     this.scene = new THREE.Scene();
-    // Light background
-    this.scene.background = new THREE.Color(0xF0F2F5);
-    this.scene.fog = new THREE.FogExp2(0xF0F2F5, 0.05);
+    this.scene.background = new THREE.Color(0xEBEFF2);
+    this.scene.fog = new THREE.FogExp2(0xEBEFF2, 0.05);
 
     // Ground plane
     const groundGeo = new THREE.PlaneGeometry(20, 20);
     const groundMat = new THREE.MeshStandardMaterial({
-      color: 0xE4E6EB,
+      color: 0xDFE3E6,
       roughness: 0.85,
       metalness: 0.05,
     });
@@ -117,14 +120,15 @@ class MotorcycleConfigurator {
     this.scene.add(ground);
 
     // Grid helper
-    const grid = new THREE.GridHelper(12, 24, 0xC0C4CC, 0xD0D3DA);
+    const grid = new THREE.GridHelper(12, 24, 0xC4C9CD, 0xD4D9DD);
     grid.position.y = 0;
     this.scene.add(grid);
+    this.grid = grid;
 
     // Reflective circle under bike
     const circleGeo = new THREE.CircleGeometry(1.4, 64);
     const circleMat = new THREE.MeshStandardMaterial({
-      color: 0xDDDFE5,
+      color: 0xD0D5D9,
       roughness: 0.2,
       metalness: 0.5,
     });
@@ -142,12 +146,11 @@ class MotorcycleConfigurator {
   }
 
   _setupLights() {
-    // Ambient — brighter for light theme
-    const ambient = new THREE.AmbientLight(0xffffff, 0.9);
+    const ambient = new THREE.AmbientLight(0xffffff, 1.0);
     this.scene.add(ambient);
 
-    // Key light (neutral white)
-    const key = new THREE.DirectionalLight(0xffffff, 1.4);
+    // Key light
+    const key = new THREE.DirectionalLight(0xffffff, 1.5);
     key.position.set(3, 4, 3);
     key.castShadow = true;
     key.shadow.mapSize.set(2048, 2048);
@@ -160,12 +163,12 @@ class MotorcycleConfigurator {
     key.shadow.bias = -0.001;
     this.scene.add(key);
 
-    // Fill light (cool)
+    // Fill light
     const fill = new THREE.DirectionalLight(0xe8eeff, 0.7);
     fill.position.set(-4, 2, -2);
     this.scene.add(fill);
 
-    // Rim light (subtle accent)
+    // Rim light
     const rim = new THREE.DirectionalLight(0xffffff, 0.4);
     rim.position.set(0, 1, -4);
     this.scene.add(rim);
@@ -195,12 +198,10 @@ class MotorcycleConfigurator {
 
   _pauseAutoRotate() {
     this.controls.autoRotate = false;
-    updateAutoRotateBadge(false);
     clearTimeout(this.autoRotateTimer);
     this.autoRotateTimer = setTimeout(() => {
       this.controls.autoRotate = true;
-      updateAutoRotateBadge(true);
-    }, 5000);
+    }, 15000);
   }
 
   _setupDecalCanvas() {
@@ -208,96 +209,64 @@ class MotorcycleConfigurator {
     this.decalCanvas.width = 2048;
     this.decalCanvas.height = 2048;
     this.decalCtx = this.decalCanvas.getContext('2d');
+
     this.decalTexture = new THREE.CanvasTexture(this.decalCanvas);
     this.decalTexture.colorSpace = THREE.SRGBColorSpace;
-    this.decalTexture.flipY = false; // GLB UVs don't flip Y
+    this.decalTexture.flipY = false;
+    this.decalTexture.needsUpdate = true;
   }
 
   _setupResizeObserver() {
-    const ro = new ResizeObserver(() => this._onResize());
-    ro.observe(this.canvas.parentElement);
-    // Also respond to window resize
-    window.addEventListener('resize', () => this._onResize());
-  }
-
-  _onResize() {
-    // Use the viewer element's actual dimensions, not the canvas
-    const viewer = this.canvas.parentElement;
-    const w = viewer.clientWidth;
-    const h = viewer.clientHeight;
-    if (w === 0 || h === 0) return;
-    this.camera.aspect = w / h;
-    this.camera.updateProjectionMatrix();
-    this.renderer.setSize(w, h, false);
+    const resizeObserver = new ResizeObserver(() => {
+      this.forceResize();
+    });
+    resizeObserver.observe(this.canvas.parentElement);
   }
 
   forceResize() {
-    // Call this after any layout animation completes
-    this._onResize();
+    if (!this.canvas || !this.renderer || !this.camera) return;
+    const w = this.canvas.parentElement.clientWidth;
+    const h = this.canvas.parentElement.clientHeight;
+    this.camera.aspect = w / h;
+    this.camera.updateProjectionMatrix();
+    this.renderer.setSize(w, h);
   }
 
   _animate() {
     this.animFrameId = requestAnimationFrame(() => this._animate());
-    this.controls.update();
-    this.renderer.render(this.scene, this.camera);
+    if (this.controls) this.controls.update();
+    if (this.renderer && this.scene && this.camera) {
+      this.renderer.render(this.scene, this.camera);
+    }
   }
 
-  /* ----- MODEL LOADING ----- */
+  /* ----- GLTF LOADER ----- */
   async loadModel(modelConfig, onProgress) {
-    if (this.isLoading) return;
-    this.isLoading = true;
-
-    // Remove existing model
     if (this.model) {
       this.scene.remove(this.model);
-      this.model.traverse(obj => {
-        if (obj.geometry) obj.geometry.dispose();
-        if (obj.material) {
-          if (Array.isArray(obj.material)) obj.material.forEach(m => m.dispose());
-          else obj.material.dispose();
-        }
-      });
       this.model = null;
       this.meshMap = {};
       this.zoneMaterials = {};
-      this.originalDecalImage = null;
     }
 
-    // Try loading GLB
-    const glbLoaded = await this._tryLoadGLB(modelConfig, onProgress);
-    if (!glbLoaded) {
-      // Fall back to procedural placeholder
-      this._createPlaceholderBike(modelConfig);
-      onProgress && onProgress(100);
-    }
+    const loader = new GLTFLoader();
+    
+    // Draco decoder
+    const draco = new DRACOLoader();
+    draco.setDecoderPath('https://www.gstatic.com/draco/versioned/decoders/1.5.6/');
+    loader.setDRACOLoader(draco);
 
-    // Apply initial colors
-    state.colors = {};
-    modelConfig.colorZones.forEach(zone => {
-      state.colors[zone.id] = zone.default;
-    });
-    this._applyAllColors();
-    this._redrawDecal();
+    this.isLoading = true;
+    const modelUrl = `./models/${modelConfig.id}/${modelConfig.file}`;
 
-    this.isLoading = false;
-  }
-
-  async _tryLoadGLB(modelConfig, onProgress) {
-    return new Promise((resolve) => {
-      const loader = new GLTFLoader();
-      const draco = new DRACOLoader();
-      draco.setDecoderPath('https://cdn.jsdelivr.net/npm/three@0.165.0/examples/jsm/libs/draco/');
-      loader.setDRACOLoader(draco);
-
+    const loadGLB = () => new Promise((resolve) => {
       loader.load(
-        modelConfig.glb,
+        modelUrl,
         (gltf) => {
           this.model = gltf.scene;
           this.model.scale.setScalar(modelConfig.scale || 1);
 
-          // Center model using ONLY the main ATV assembly's bounding box.
-          // The GLB also has sticker planes at [-3.6, 0, 0] and other vehicles —
-          // using the whole scene would skew the center far to the left.
+          // Center model using ONLY the main ATV assembly's bounding box
           let centerTarget = this.model;
           this.model.traverse(n => {
             if (n.name === 'Yamaha_YZF_450_2020') centerTarget = n;
@@ -316,35 +285,26 @@ class MotorcycleConfigurator {
             
             // Hide other vehicles (KTM, Husqvarna, YZF dirt bike) and floating duplicate parts
             if (modelConfig.id === 'yfz450r') {
-              // Walk up to the scene-level root ancestor of this object
               let rootNode = obj;
               while (rootNode.parent && rootNode.parent !== this.model) {
                 rootNode = rootNode.parent;
               }
               const rootName = rootNode.name.toLowerCase();
 
-              // Root groups that are dirt-bike duplicates or Husqvarna/KTM parts from
-              // the shared Blender scene file. Identified by analysing the GLB structure.
-              // Only allow the main root (no suffix) - all numbered variants are bad.
-              // Note: .011 front shocks are dirt-bike forks at local Y=37-64 units.
-              //       ATV front suspension is in the main root as axis_chrome/black parts.
               const badRootGroups = new Set([
                 'yamaha_yzf_450_2020.001', 'yamaha_yzf_450_2020.002', 'yamaha_yzf_450_2020.003',
                 'yamaha_yzf_450_2020.004', 'yamaha_yzf_450_2020.005',
                 'yamaha_yzf_450_2020.006', 'yamaha_yzf_450_2020.007',
                 'yamaha_yzf_450_2020.008', 'yamaha_yzf_450_2020.009',
                 'yamaha_yzf_450_2020.010',
-                'yamaha_yzf_450_2020.011', // dirt bike front forks at Y=37-64 scale
+                'yamaha_yzf_450_2020.011', // dirt bike forks Y=37-64 units
                 'yamaha_yzf_450_2020.012',
-                'yamaha_yzf_450_2020.013', // duplicate .001 handlebar set
+                'yamaha_yzf_450_2020.013',
                 'yamaha_yzf_450_2020.014', 'yamaha_yzf_450_2020.015',
-                'yamaha_yzf_450_2020.016', // duplicate .002 handlebar set
+                'yamaha_yzf_450_2020.016',
                 'yamaha_yzf_450_2020.017', 'yamaha_yzf_450_2020.018',
-                // Mispositioned sticker/decal planes (plane meshes at wrong world positions)
-                'new graphic',  // at local [-0.574, 0, 0] - not on ATV
-                'sticker.001',  // at local [-3.639, 0, 0.284] - not on ATV
-                'sticker.002',  // flat plane floating in wrong position
-                'sticker.003',  // flat plane floating in wrong position
+                'new graphic', // mispositioned decals
+                'sticker.001',
               ]);
 
               const isToHide = (
@@ -355,10 +315,6 @@ class MotorcycleConfigurator {
                 objName === 'handles00' ||
                 objName === 'handles01' ||
                 objName === 'red_part' ||
-                objName.includes('yamaha_yzf_450_2020.001') ||
-                objName.includes('yamaha_yzf_450_2020.002') ||
-                objName.includes('yamaha_yzf_450_2020.003') ||
-                objName.includes('yamaha_yzf_450_2020.005') ||
                 objName.includes('husqvarna') || 
                 objName.includes('ktm') || 
                 objName.includes('rim_second') ||
@@ -366,16 +322,11 @@ class MotorcycleConfigurator {
                 objName === 'plane' ||
                 (objName.startsWith('plane.') && !objName.includes('.006') && !objName.includes('.007') && !objName.includes('.008') && !objName.includes('.009')) ||
                 objName.includes('render.') ||
-                // Stray Blender default primitive objects (Cylinder.xxx, Circle.xxx, Cube.xxx, Bolt, Hex Nut)
-                // YFZ 450R parts all have descriptive prefixed names, never generic Blender primitives
                 /^cylinder(\.\d+)?$/.test(objName) ||
                 /^circle(\.\d+)?$/.test(objName) ||
                 /^cube(\.\d+)?$/.test(objName) ||
                 /^bolt(\.\d+)?$/.test(objName) ||
                 objName === 'hex nut' ||
-                // Duplicate handlebar sets — all real YFZ 450R parts are in the
-                // main root group; duplicates in .013/.016 groups are already caught
-                // by badRootGroups. These individual catches handle edge cases:
                 (objName.startsWith('handlebar_') && objName.endsWith('.001')) ||
                 (objName.startsWith('handlebar_') && objName.endsWith('.002')) ||
                 objName === 'handle.002'
@@ -399,7 +350,7 @@ class MotorcycleConfigurator {
               const oldMat = obj.material;
               const fullName = obj.name.toLowerCase();
 
-              // Map zone to mesh (supporting substring and array matches)
+              // Map zone to mesh
               const matchedZones = modelConfig.colorZones.filter(z => {
                 if (Array.isArray(z.meshName)) {
                   return z.meshName.some(name => fullName.includes(name.toLowerCase()));
@@ -428,7 +379,7 @@ class MotorcycleConfigurator {
                 });
               }
 
-              // Decal mesh (supporting substring and array matches)
+              // Decal mesh mapping
               let isDecal = false;
               if (Array.isArray(modelConfig.decalMesh)) {
                 isDecal = modelConfig.decalMesh.some(name => fullName.includes(name.toLowerCase()));
@@ -437,9 +388,6 @@ class MotorcycleConfigurator {
               }
 
               if (isDecal) {
-                if (oldMat && oldMat.map && oldMat.map.image) {
-                  this.originalDecalImage = oldMat.map.image;
-                }
                 obj.material = new THREE.MeshStandardMaterial({
                   map: this.decalTexture,
                   transparent: true,
@@ -454,33 +402,19 @@ class MotorcycleConfigurator {
             }
           });
 
-          // ── WORLD-SPACE SANITY FILTER ──────────────────────────────────────────
-          // Catches any geometry that survived name-based filters but is clearly
-          // NOT part of the ATV. Uses the GEOMETRIC BBOX CENTER (more accurate than
-          // the pivot point) so small scattered pieces are caught even if their
-          // local origin is inside bounds.
-          //
-          // ATV real-world dims: width ~0.85m, length ~1.5m, height ~0.95m
-          // At scale 0.85: width ~0.72m, length ~1.28m, height ~0.81m from center
-          // Bounds below give a generous ≥30% safety margin on each axis.
-          //
-          // X (width):  ±1.05  — handlebars reach max ±0.45, brackets at -1.2 are caught
-          // Z (length): ±1.15  — front/rear wheels reach max ±0.65
-          // Y (height):  −0.12 → 1.85  — from just below ground to above handlebars
-          const atvBoundsMin = new THREE.Vector3(-1.05, -0.12, -1.15);
-          const atvBoundsMax = new THREE.Vector3( 1.05,  1.85,  1.15);
-          const _meshBbox = new THREE.Box3();
-          const _meshCenter = new THREE.Vector3();
-
+          // ── WORLD-SPACE SANITY FILTER (double safety for floating washers/bolts) ──
+          const atvBoundsMin = new THREE.Vector3(-1.0, -0.1, -1.5);
+          const atvBoundsMax = new THREE.Vector3(1.6, 1.4, 1.5);
+          this.model.updateMatrixWorld(true);
           this.model.traverse(obj => {
             if (!obj.isMesh || !obj.visible) return;
-            _meshBbox.setFromObject(obj);
-            _meshBbox.getCenter(_meshCenter);
+            const _meshCenter = new THREE.Vector3();
+            obj.getWorldPosition(_meshCenter);
             const isStray = (
-              _meshCenter.y < atvBoundsMin.y ||
-              _meshCenter.y > atvBoundsMax.y ||
               _meshCenter.x < atvBoundsMin.x ||
               _meshCenter.x > atvBoundsMax.x ||
+              _meshCenter.y < atvBoundsMin.y ||
+              _meshCenter.y > atvBoundsMax.y ||
               _meshCenter.z < atvBoundsMin.z ||
               _meshCenter.z > atvBoundsMax.z
             );
@@ -490,7 +424,6 @@ class MotorcycleConfigurator {
               obj.receiveShadow = false;
             }
           });
-          // ── END WORLD-SPACE SANITY FILTER ─────────────────────────────────────
 
           this.scene.add(this.model);
 
@@ -508,226 +441,52 @@ class MotorcycleConfigurator {
           }
         },
         () => {
-          // GLB not found – resolve false to trigger placeholder
           resolve(false);
         }
       );
     });
+
+    const success = await loadGLB();
+    if (!success) {
+      this._createPlaceholderBike(modelConfig);
+    }
+    
+    this._applyAllColors();
+    this._redrawDecal();
+    this.isLoading = false;
   }
 
   _createPlaceholderBike(modelConfig) {
     const group = new THREE.Group();
+    const bodyMat = () => new THREE.MeshPhysicalMaterial({ color: 0x0a0a0a, roughness: 0.4, metalness: 0.4 });
+    const tireMat = new THREE.MeshStandardMaterial({ color: 0x1a1a1a, roughness: 0.85 });
+    const graphicMat = new THREE.MeshStandardMaterial({ map: this.decalTexture, transparent: true });
 
-    // ---- Shared materials pool ----
-    const bodyMat = () => new THREE.MeshPhysicalMaterial({
-      color: 0x0a0a0a, roughness: 0.4, metalness: 0.4,
-      clearcoat: 0.8, clearcoatRoughness: 0.15,
-    });
-    const chromeMat = new THREE.MeshPhysicalMaterial({
-      color: 0xcccccc, roughness: 0.1, metalness: 0.95,
-      clearcoat: 1, clearcoatRoughness: 0.05,
-    });
-    const tireMat = new THREE.MeshStandardMaterial({
-      color: 0x1a1a1a, roughness: 0.85, metalness: 0.05,
-    });
-    const rimMat = new THREE.MeshPhysicalMaterial({
-      color: 0x888888, roughness: 0.2, metalness: 0.9,
-      clearcoat: 0.8,
-    });
-    const graphicMat = new THREE.MeshStandardMaterial({
-      color: 0xD4FF00, roughness: 0.5, metalness: 0.1,
-    });
-
-    // Helper
     const mesh = (geo, mat, x=0, y=0, z=0, rx=0, ry=0, rz=0) => {
       const m = new THREE.Mesh(geo, mat);
       m.position.set(x, y, z);
       m.rotation.set(rx, ry, rz);
-      m.castShadow = true;
-      m.receiveShadow = true;
       return m;
     };
 
-    // ---- WHEELS ----
     const wheelGeo = new THREE.TorusGeometry(0.32, 0.09, 16, 48);
-    const wheelFront = mesh(wheelGeo, tireMat, 0.75, 0.32, 0, Math.PI/2, 0, 0);
-    const wheelRear  = mesh(wheelGeo, tireMat, -0.75, 0.32, 0, Math.PI/2, 0, 0);
-    group.add(wheelFront, wheelRear);
+    group.add(mesh(wheelGeo, tireMat, 0.75, 0.32, 0, Math.PI/2));
+    group.add(mesh(wheelGeo, tireMat, -0.75, 0.32, 0, Math.PI/2));
 
-    // Rims
-    const rimGeo = new THREE.TorusGeometry(0.28, 0.02, 8, 32);
-    group.add(mesh(rimGeo, rimMat, 0.75, 0.32, 0, Math.PI/2));
-    group.add(mesh(rimGeo, rimMat, -0.75, 0.32, 0, Math.PI/2));
-
-    // Spokes
-    for (let i = 0; i < 8; i++) {
-      const a = (i / 8) * Math.PI * 2;
-      const spokeGeo = new THREE.CylinderGeometry(0.008, 0.008, 0.54, 4);
-      const sx = Math.cos(a) * 0.13;
-      const sy = Math.sin(a) * 0.13;
-      for (const wx of [0.75, -0.75]) {
-        const s = mesh(spokeGeo, rimMat, wx, 0.32 + sy, sx, 0, 0, a);
-        group.add(s);
-      }
-    }
-
-    // Axle
-    const axleGeo = new THREE.CylinderGeometry(0.03, 0.03, 0.25, 12);
-    group.add(mesh(axleGeo, chromeMat, 0.75, 0.32, 0, 0, 0, Math.PI/2));
-    group.add(mesh(axleGeo, chromeMat, -0.75, 0.32, 0, 0, 0, Math.PI/2));
-
-    // ---- FRAME ----
-    const frameMat = bodyMat();
-    // Main spine
     const spineGeo = new THREE.CylinderGeometry(0.04, 0.04, 1.55, 8);
-    group.add(mesh(spineGeo, frameMat, -0.05, 0.62, 0, 0, 0, -0.18));
-    // Down tube
-    const dtGeo = new THREE.CylinderGeometry(0.03, 0.03, 0.72, 8);
-    group.add(mesh(dtGeo, frameMat, 0.38, 0.4, 0, 0, 0, 0.6));
-    // Seat rail
-    const srGeo = new THREE.CylinderGeometry(0.025, 0.025, 0.62, 8);
-    group.add(mesh(srGeo, frameMat, -0.5, 0.71, 0, 0, 0, 0.12));
-    // Sub frame
-    const sfGeo = new THREE.CylinderGeometry(0.02, 0.02, 0.48, 8);
-    group.add(mesh(sfGeo, frameMat, -0.78, 0.56, 0, 0, 0, -0.45));
+    group.add(mesh(spineGeo, bodyMat(), -0.05, 0.62, 0, 0, 0, -0.18));
 
-    // ---- ENGINE / BLOCK ----
-    const engineMat = new THREE.MeshPhysicalMaterial({
-      color: 0x333333, roughness: 0.6, metalness: 0.7,
-    });
-    const engGeo = new THREE.BoxGeometry(0.32, 0.28, 0.22);
-    group.add(mesh(engGeo, engineMat, 0.0, 0.38, 0));
-    // Cylinder head
-    const cylGeo = new THREE.CylinderGeometry(0.085, 0.09, 0.22, 16);
-    group.add(mesh(cylGeo, engineMat, 0.05, 0.62, 0, 0, 0, -0.15));
-    // Exhaust pipe
-    const pipe1Geo = new THREE.TorusGeometry(0.14, 0.022, 8, 20, Math.PI * 0.6);
-    group.add(mesh(pipe1Geo, chromeMat, 0.12, 0.35, 0.12, -Math.PI/2, 0, 1.2));
-    const pipe2Geo = new THREE.CylinderGeometry(0.022, 0.022, 0.55, 8);
-    group.add(mesh(pipe2Geo, chromeMat, -0.34, 0.3, 0.12, 0, 0, -0.22));
-    const mufflerGeo = new THREE.CylinderGeometry(0.042, 0.035, 0.28, 12);
-    group.add(mesh(mufflerGeo, chromeMat, -0.56, 0.26, 0.12, 0, 0, -0.15));
+    const graphicPanelGeo = new THREE.BoxGeometry(0.32, 0.22, 0.06);
+    const panelL = mesh(graphicPanelGeo, graphicMat, -0.12, 0.52, 0.133);
+    group.add(panelL);
+    this.meshMap['Mesh_GraphicDecal'] = panelL;
 
-    // ---- TANK (colorable) ----
-    const tankMat = bodyMat();
-    const tankGeo = new THREE.BoxGeometry(0.42, 0.18, 0.22);
-    const tank = mesh(tankGeo, tankMat, 0.14, 0.76, 0);
-    group.add(tank);
-    // Round tank sides
-    const tankCapGeo = new THREE.SphereGeometry(0.11, 16, 12, 0, Math.PI);
-    group.add(mesh(tankCapGeo, tankMat, 0.34, 0.76, 0, 0, 0, 0));
-
-    // ---- FRONT FENDER ----
-    const fFenderMat = bodyMat();
-    fFenderMat.color.set(0xD4FF00);
-    const ffGeo = new THREE.CylinderGeometry(0.37, 0.37, 0.12, 24, 1, true, -Math.PI*0.22, Math.PI*0.44);
-    const ff = mesh(ffGeo, fFenderMat, 0.75, 0.32, 0, 0, 0, -Math.PI*0.1);
-    group.add(ff);
-
-    // ---- REAR FENDER ----
-    const rFenderMat = bodyMat();
-    rFenderMat.color.set(0xD4FF00);
-    const rfGeo = new THREE.BoxGeometry(0.32, 0.07, 0.18);
-    const rf = mesh(rfGeo, rFenderMat, -0.82, 0.72, 0, 0, 0, 0.15);
-    group.add(rf);
-
-    // ---- SHROUDS (colorable graphic panels) ----
-    const shroudMat = bodyMat();
-    // Left shroud
-    const sLGeo = new THREE.BoxGeometry(0.32, 0.22, 0.06);
-    const shroudL = new THREE.Mesh(sLGeo, shroudMat);
-    shroudL.position.set(-0.12, 0.52, 0.13);
-    shroudL.castShadow = true;
-    group.add(shroudL);
-    // Right shroud
-    const shroudR = shroudL.clone();
-    shroudR.position.z = -0.13;
-    group.add(shroudR);
-
-    // Graphics decal on shrouds (accent stripe)
-    const stripeGeo = new THREE.BoxGeometry(0.3, 0.04, 0.065);
-    const stripeMatL = new THREE.MeshStandardMaterial({
-      map: this.decalTexture, transparent: true,
-    });
-    const stripeL = mesh(stripeGeo, stripeMatL, -0.12, 0.52, 0.133);
-    group.add(stripeL);
-    this.meshMap['Mesh_GraphicDecal'] = stripeL;
-
-    // ---- SEAT ----
-    const seatMat = new THREE.MeshStandardMaterial({ color: 0x1a1212, roughness: 0.9 });
-    const seatGeo = new THREE.BoxGeometry(0.44, 0.06, 0.16);
-    group.add(mesh(seatGeo, seatMat, -0.32, 0.82, 0));
-
-    // ---- SWINGARM ----
-    const swingMat = bodyMat();
-    const swingGeo = new THREE.BoxGeometry(0.72, 0.05, 0.1);
-    group.add(mesh(swingGeo, swingMat, -0.6, 0.32, 0, 0, 0, 0.1));
-
-    // ---- FORK (front) ----
-    const forkMat = chromeMat.clone();
-    const fork1Geo = new THREE.CylinderGeometry(0.025, 0.025, 0.52, 12);
-    group.add(mesh(fork1Geo, forkMat, 0.75, 0.57, 0.06, 0, 0, 0.06));
-    group.add(mesh(fork1Geo, forkMat, 0.75, 0.57, -0.06, 0, 0, 0.06));
-
-    // ---- HANDLEBAR ----
-    const hbarGeo = new THREE.CylinderGeometry(0.015, 0.015, 0.36, 10);
-    group.add(mesh(hbarGeo, chromeMat, 0.6, 0.92, 0, 0, 0, Math.PI/2));
-    // Grips
-    const gripGeo = new THREE.CylinderGeometry(0.022, 0.022, 0.08, 10);
-    const gripMat = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.9 });
-    group.add(mesh(gripGeo, gripMat, 0.6, 0.92, 0.20, 0, 0, Math.PI/2));
-    group.add(mesh(gripGeo, gripMat, 0.6, 0.92, -0.20, 0, 0, Math.PI/2));
-    // Stem
-    const stemGeo = new THREE.CylinderGeometry(0.025, 0.025, 0.22, 8);
-    group.add(mesh(stemGeo, chromeMat, 0.66, 0.82, 0));
-
-    // ---- NUMBER PLATE ----
-    const numMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.5 });
-    const numGeo = new THREE.BoxGeometry(0.16, 0.14, 0.01);
-    const numPlate = mesh(numGeo, numMat, 0.86, 0.58, 0, 0, 0, -0.1);
-    group.add(numPlate);
-    this.meshMap['Mesh_NumberPlate'] = numPlate;
-
-    // ---- HEADLIGHT ----
-    const headlightMat = new THREE.MeshPhysicalMaterial({
-      color: 0xffffff, roughness: 0, metalness: 0,
-      transparent: true, opacity: 0.85,
-      transmission: 0.5,
-    });
-    const headGeo = new THREE.SphereGeometry(0.075, 16, 16, 0, Math.PI * 2, 0, Math.PI / 2);
-    group.add(mesh(headGeo, headlightMat, 0.95, 0.62, 0, -Math.PI/2, 0, 0));
-    // Headlight glow
-    const glowLight = new THREE.PointLight(0xffeedd, 1.5, 1.0);
-    glowLight.position.set(1.1, 0.65, 0);
-    group.add(glowLight);
-
-    // ---- Map zone names to meshes ----
-    modelConfig.colorZones.forEach(zone => {
-      let targetMesh = null;
-      if (zone.id === 'front_fender') targetMesh = ff;
-      else if (zone.id === 'rear_fender') targetMesh = rf;
-      else if (zone.id === 'tank') targetMesh = tank;
-      else if (zone.id === 'shroud_left') targetMesh = shroudL;
-      else if (zone.id === 'shroud_right') targetMesh = shroudR;
-      else if (zone.id === 'swingarm') targetMesh = group.children.find(c => c.geometry === swingGeo);
-      else if (zone.id === 'number_plate') targetMesh = numPlate;
-      else if (zone.id === 'hood') targetMesh = tank;
-      else if (zone.id === 'side_panels') targetMesh = shroudL;
-      else if (zone.id === 'front_bumper') targetMesh = rf;
-
-      if (targetMesh) {
-        this.zoneMaterials[zone.id] = targetMesh.material;
-        this.meshMap[zone.meshName] = targetMesh;
-      }
-    });
-
-    // Center group
     group.position.set(0, 0, 0);
     this.model = group;
     this.scene.add(group);
   }
 
-  /* ----- MATERIAL UPDATES ----- */
+  /* ----- MATERIAL CONFIG ----- */
   setZoneColor(zoneId, hexColor) {
     state.colors[zoneId] = hexColor;
     const mats = this.zoneMaterials[zoneId];
@@ -755,14 +514,13 @@ class MotorcycleConfigurator {
       if (col) this.setZoneColor(zone.id, col);
     });
     updateSummary();
-    updateColorPickerUI();
   }
 
-  /* ----- DECAL / CANVAS TEXTURE ----- */
+  /* ----- MULTI-PLATE CANVAS DECAL DRAWING ----- */
   _redrawDecal() {
     const ctx = this.decalCtx;
-    const W = this.decalCanvas.width;   // 2048
-    const H = this.decalCanvas.height;  // 2048
+    const W = this.decalCanvas.width;
+    const H = this.decalCanvas.height;
 
     ctx.clearRect(0, 0, W, H);
 
@@ -773,173 +531,132 @@ class MotorcycleConfigurator {
       bangers: "'Bangers', cursive",
       russo:   "'Russo One', sans-serif",
     };
-    const fontFamily = fontMap[state.nameFont] || fontMap.bebas;
 
-    // ─── Derive colors from current state ───────────────────────────
-    const bodyColor   = state.colors.front_fender || state.colors.side_panels || '#0055aa';
-    const accent      = '#D4FF00';   // 4D brand yellow
-    const nameCol     = state.nameColor   || '#ffffff';
-    const numCol      = state.numberColor || '#ffffff';
-    const riderName   = (state.riderName  || '').toUpperCase();
-    const riderNumber = state.riderNumber || '';
-
-    // ─── Helper: draw a chevron stripe ──────────────────────────────
-    const chevron = (x, y, w, h, color, dir = 1) => {
-      ctx.fillStyle = color;
-      ctx.beginPath();
-      ctx.moveTo(x, y);
-      ctx.lineTo(x + w, y);
-      ctx.lineTo(x + w + dir * h * 0.4, y + h * 0.5);
-      ctx.lineTo(x + w, y + h);
-      ctx.lineTo(x, y + h);
-      ctx.lineTo(x + dir * h * 0.4, y + h * 0.5);
-      ctx.closePath();
-      ctx.fill();
-    };
-
-    // ─── Helper: draw outline text ───────────────────────────────────
-    const outlineText = (text, x, y, size, fill, outline, lw) => {
-      ctx.font = `bold ${size}px ${fontFamily}`;
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.lineWidth = lw;
-      ctx.strokeStyle = outline;
-      ctx.strokeText(text, x, y);
-      ctx.fillStyle = fill;
-      ctx.fillText(text, x, y);
-    };
-
-    // ================================================================
-    //  TILE THE GRAPHIC KIT ACROSS THE FULL 2048×2048 CANVAS
-    //  Using a 2-column × 2-row tile so it covers all UV sub-regions
-    // ================================================================
-    const tileW = W / 2;
-    const tileH = H / 2;
-
-    // Offsets for the 4 tiles (covers the whole UV space)
-    const tiles = [
-      { ox: 0,       oy: 0       },
-      { ox: tileW,   oy: 0       },
-      { ox: 0,       oy: tileH   },
-      { ox: tileW,   oy: tileH   },
-    ];
-
-    tiles.forEach(({ ox, oy }) => {
-      const tw = tileW;
-      const th = tileH;
-
-      // 1. Background: solid body color fills the tile
+    const bodyColor = state.colors.side_panels || state.colors.front_fender || '#0055aa';
+    const accent = '#D4FF00'; // 4D neon green
+    
+    // Draw base styled wrapping layout template design across the canvas
+    const drawBaseTemplate = (ox, oy, tw, th) => {
       ctx.fillStyle = bodyColor;
       ctx.fillRect(ox, oy, tw, th);
 
-      // 2. Top diagonal band (dark)
-      ctx.save();
+      // Top bands
+      ctx.fillStyle = 'rgba(0,0,0,0.22)';
       ctx.beginPath();
       ctx.moveTo(ox, oy);
       ctx.lineTo(ox + tw, oy);
-      ctx.lineTo(ox + tw, oy + th * 0.3);
-      ctx.lineTo(ox, oy + th * 0.2);
+      ctx.lineTo(ox + tw, oy + th * 0.28);
+      ctx.lineTo(ox, oy + th * 0.18);
       ctx.closePath();
-      ctx.fillStyle = 'rgba(0,0,0,0.25)';
       ctx.fill();
-      ctx.restore();
 
-      // 3. Bottom diagonal band (dark)
-      ctx.save();
-      ctx.beginPath();
-      ctx.moveTo(ox, oy + th * 0.75);
-      ctx.lineTo(ox + tw, oy + th * 0.65);
-      ctx.lineTo(ox + tw, oy + th);
-      ctx.lineTo(ox, oy + th);
-      ctx.closePath();
-      ctx.fillStyle = 'rgba(0,0,0,0.25)';
-      ctx.fill();
-      ctx.restore();
-
-      // 4. Chevron accent stripe cluster (mid-section)
+      // Chevrons
       const chH = th * 0.12;
       const chY = oy + th * 0.38;
-      chevron(ox + tw * 0.05, chY,           tw * 0.88, chH, accent,               1);
-      chevron(ox + tw * 0.05, chY + chH * 1.2, tw * 0.88, chH * 0.6, 'rgba(0,0,0,0.3)', 1);
+      const drawChevron = (x, y, w, h, col) => {
+        ctx.fillStyle = col;
+        ctx.beginPath();
+        ctx.moveTo(x, y);
+        ctx.lineTo(x + w, y);
+        ctx.lineTo(x + w + h * 0.4, y + h * 0.5);
+        ctx.lineTo(x + w, y + h);
+        ctx.lineTo(x, y + h);
+        ctx.lineTo(x + h * 0.4, y + h * 0.5);
+        ctx.closePath();
+        ctx.fill();
+      };
+      drawChevron(ox + tw * 0.05, chY, tw * 0.88, chH, accent);
+      drawChevron(ox + tw * 0.05, chY + chH * 1.2, tw * 0.88, chH * 0.6, 'rgba(0,0,0,0.3)');
+    };
 
-      // 5. Thin accent line above and below chevron
-      ctx.strokeStyle = accent;
-      ctx.lineWidth = Math.max(2, th * 0.006);
-      ctx.beginPath();
-      ctx.moveTo(ox + tw * 0.05, chY - 4);
-      ctx.lineTo(ox + tw * 0.95, chY - 4);
-      ctx.stroke();
-      ctx.beginPath();
-      ctx.moveTo(ox + tw * 0.05, chY + chH * 2.0 + 4);
-      ctx.lineTo(ox + tw * 0.95, chY + chH * 2.0 + 4);
-      ctx.stroke();
+    // Draw the 4 background quadrants
+    const tileW = W / 2;
+    const tileH = H / 2;
+    drawBaseTemplate(0, 0, tileW, tileH);
+    drawBaseTemplate(tileW, 0, tileW, tileH);
+    drawBaseTemplate(0, tileH, tileW, tileH);
+    drawBaseTemplate(tileW, tileH, tileW, tileH);
 
-      // 6. Number plate zone (white rounded rect, right 40% of tile)
-      const npX = ox + tw * 0.55;
-      const npY = oy + th * 0.15;
-      const npW = tw * 0.38;
-      const npH = th * 0.55;
-      const r   = npW * 0.12;
+    // Render fixed white background plates (Left, Right, Front)
+    const drawBackgroundPlate = (x, y, w, h) => {
       ctx.fillStyle = 'rgba(255,255,255,0.92)';
+      ctx.strokeStyle = bodyColor;
+      ctx.lineWidth = 14;
+      
+      const r = w * 0.12;
       ctx.beginPath();
-      ctx.moveTo(npX + r, npY);
-      ctx.lineTo(npX + npW - r, npY);
-      ctx.quadraticCurveTo(npX + npW, npY, npX + npW, npY + r);
-      ctx.lineTo(npX + npW, npY + npH - r);
-      ctx.quadraticCurveTo(npX + npW, npY + npH, npX + npW - r, npY + npH);
-      ctx.lineTo(npX + r, npY + npH);
-      ctx.quadraticCurveTo(npX, npY + npH, npX, npY + npH - r);
-      ctx.lineTo(npX, npY + r);
-      ctx.quadraticCurveTo(npX, npY, npX + r, npY);
+      ctx.moveTo(x - w/2 + r, y - h/2);
+      ctx.lineTo(x + w/2 - r, y - h/2);
+      ctx.quadraticCurveTo(x + w/2, y - h/2, x + w/2, y - h/2 + r);
+      ctx.lineTo(x + w/2, y + h/2 - r);
+      ctx.quadraticCurveTo(x + w/2, y + h/2, x + w/2 - r, y + h/2);
+      ctx.lineTo(x - w/2 + r, y + h/2);
+      ctx.quadraticCurveTo(x - w/2, y + h/2, x - w/2, y + h/2 - r);
+      ctx.lineTo(x - w/2, y - h/2 + r);
+      ctx.quadraticCurveTo(x - w/2, y - h/2, x - w/2 + r, y - h/2);
       ctx.closePath();
       ctx.fill();
-
-      // Number plate border
-      ctx.strokeStyle = bodyColor;
-      ctx.lineWidth = Math.max(2, tw * 0.008);
       ctx.stroke();
+    };
 
-      // 7. Rider number inside number plate
-      if (riderNumber) {
-        outlineText(
-          riderNumber,
-          npX + npW * 0.5,
-          npY + npH * 0.55,
-          Math.round(npH * 0.55),
-          numCol === '#ffffff' ? bodyColor : numCol,
-          'rgba(0,0,0,0.15)',
-          2
-        );
-      }
+    // Right Plate (sticker.003) sits at X ~ 680, Y ~ 1024
+    drawBackgroundPlate(680, 1024, 380, 520);
+    // Left Plate (sticker.002) sits at X ~ 1180, Y ~ 1024
+    drawBackgroundPlate(1180, 1024, 380, 520);
+    // Front Plate sits at X ~ 512, Y ~ 1536
+    drawBackgroundPlate(512, 1536, 400, 480);
 
-      // 8. Rider name (left of number plate, in middle band)
-      if (riderName) {
-        const nameSize = Math.round(th * 0.08);
-        outlineText(
-          riderName,
-          ox + tw * 0.28,
-          oy + th * 0.47,
-          nameSize,
-          nameCol,
-          'rgba(0,0,0,0.7)',
-          Math.max(2, nameSize * 0.12)
-        );
+    // Helper: draw text according to coordinate sliders
+    const drawPlateRiderText = (p) => {
+      const fontFamily = fontMap[p.font] || fontMap.bebas;
+      ctx.save();
+      ctx.translate(p.x, p.y);
+      ctx.rotate((p.rotation * Math.PI) / 180);
+      ctx.scale(p.stretchH, p.stretchV);
+      
+      ctx.font = `bold ${p.fontSize}px ${fontFamily}`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      
+      if (ctx.letterSpacing !== undefined) {
+        ctx.letterSpacing = (p.letterSpacing * p.fontSize) + 'px';
       }
+      
+      const num = p.number || '';
+      
+      if (p.strokeWidth > 0) {
+        ctx.lineWidth = p.strokeWidth;
+        ctx.strokeStyle = p.strokeColor;
+        ctx.strokeText(num, 0, 0);
+      }
+      
+      ctx.fillStyle = p.color;
+      ctx.fillText(num, 0, 0);
+      ctx.restore();
+    };
 
-      // 9. Logo (if selected)
-      if (state.logoImage) {
-        const logoW = tw * 0.22;
-        const logoH = logoW * 0.6;
-        ctx.drawImage(
-          state.logoImage,
-          ox + tw * 0.06,
-          oy + th * 0.08,
-          logoW, logoH
-        );
-      }
-    });
+    // Draw active plates text
+    drawPlateRiderText(state.plates.front);
+    drawPlateRiderText(state.plates.left);
+    drawPlateRiderText(state.plates.right);
+
+    // Draw Sponsor Logo if selected (e.g. top-left quadrant)
+    if (state.logoImage) {
+      const logoW = tileW * 0.35;
+      const logoH = logoW * 0.6;
+      ctx.drawImage(state.logoImage, tileW * 0.1, tileH * 0.1, logoW, logoH);
+      ctx.drawImage(state.logoImage, tileW * 1.1, tileH * 0.1, logoW, logoH);
+    }
 
     this.decalTexture.needsUpdate = true;
+
+    // Mirror decalCanvas to the 2D layout preview panel in top right
+    const previewCanvas = document.getElementById('layout-preview-canvas');
+    if (previewCanvas) {
+      const previewCtx = previewCanvas.getContext('2d');
+      previewCtx.clearRect(0, 0, previewCanvas.width, previewCanvas.height);
+      previewCtx.drawImage(this.decalCanvas, 0, 0, previewCanvas.width, previewCanvas.height);
+    }
   }
 
   setRiderName(name) {
@@ -982,14 +699,11 @@ class MotorcycleConfigurator {
     img.src = logoOption.file;
   }
 
-  /* ----- SCREENSHOT ----- */
   captureScreenshot() {
-    // Force render, grab data URL
     this.renderer.render(this.scene, this.camera);
     return this.canvas.toDataURL('image/jpeg', 0.85);
   }
 
-  /* ----- CAMERA PRESETS ----- */
   setCameraView(view) {
     const targets = {
       front:  { pos: [1.5, 0.5, 0.5], tgt: [0, 0.3, 0] },
@@ -1015,333 +729,511 @@ class MotorcycleConfigurator {
 }
 
 /* ============================================================
-   UI BUILDER
+   BOTTOM WINDOW CUSTOM DYNAMIC BUILDERS
    ============================================================ */
-function buildModelSelector(models) {
-  const grid = document.getElementById('model-grid');
-  if (!grid) return;
-  grid.innerHTML = '';
-  models.forEach(m => {
-    const card = document.createElement('div');
-    card.className = 'model-card' + (m.id === state.modelId ? ' selected' : '');
-    card.dataset.id = m.id;
-    card.innerHTML = `
-      <div class="model-card-icon">🏍️</div>
-      <div class="model-card-name">${m.name}</div>
-      <div class="model-card-brand">${m.brand} · ${m.category}</div>
-      <div class="model-card-check">
-        <svg viewBox="0 0 12 12" fill="none" stroke="#000" stroke-width="2">
-          <polyline points="2,6 5,9 10,3"/>
-        </svg>
-      </div>`;
-    card.addEventListener('click', () => selectModel(m.id));
-    grid.appendChild(card);
-  });
-}
 
-function buildOptionPills(containerId, options, stateKey, onChange) {
-  const container = document.getElementById(containerId);
-  if (!container) return;
-  container.innerHTML = '';
-  options.forEach(opt => {
-    const pill = document.createElement('button');
-    pill.className = 'option-pill' + (state[stateKey] === opt ? ' selected' : '');
-    pill.textContent = opt;
-    pill.addEventListener('click', () => {
-      state[stateKey] = opt;
-      container.querySelectorAll('.option-pill').forEach(p => p.classList.remove('selected'));
-      pill.classList.add('selected');
-      onChange && onChange(opt);
-      updateSummary();
-    });
-    container.appendChild(pill);
+function switchBottomTab(tabId) {
+  document.querySelectorAll('.bottom-tab-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.tab === tabId);
   });
-  // Auto-select first
-  if (!state[stateKey] && options.length > 0) {
-    state[stateKey] = options[0];
-    container.querySelector('.option-pill')?.classList.add('selected');
+  
+  const contentArea = document.getElementById('drawer-content-area');
+  if (!contentArea) return;
+  
+  if (tabId === 'logos') {
+    renderLogosDrawer(contentArea);
+  } else if (tabId === 'rider-id') {
+    renderRiderIDDrawer(contentArea);
+  } else if (tabId === 'materials') {
+    renderMaterialsDrawer(contentArea);
+  } else if (tabId === 'plate') {
+    renderPlateDrawer(contentArea);
+  } else if (tabId === 'kit') {
+    renderKitDrawer(contentArea);
+  } else if (tabId === 'bike') {
+    renderBikeDrawer(contentArea);
   }
 }
 
-function buildColorZoneTabs(modelConfig) {
-  const tabs = document.getElementById('color-zone-tabs');
-  const pickers = document.getElementById('color-pickers');
-  if (!tabs || !pickers) return;
-
-  tabs.innerHTML = '';
-  pickers.innerHTML = '';
-
-  modelConfig.colorZones.forEach((zone, i) => {
-    // Tab
-    const tab = document.createElement('button');
-    tab.className = 'zone-tab' + (i === 0 ? ' active' : '');
-    tab.textContent = zone.name;
-    tab.dataset.zone = zone.id;
-    tab.addEventListener('click', () => {
-      tabs.querySelectorAll('.zone-tab').forEach(t => t.classList.remove('active'));
-      tab.classList.add('active');
-    });
-    tabs.appendChild(tab);
-
-    // Color picker row
-    const row = document.createElement('div');
-    row.className = 'color-picker-row';
-    row.dataset.zone = zone.id;
-    const currentColor = state.colors[zone.id] || zone.default;
-    row.innerHTML = `
-      <div class="color-picker-swatch">
-        <input type="color" id="color-${zone.id}" value="${currentColor}">
+function renderLogosDrawer(container) {
+  container.innerHTML = `
+    <div class="drawer-panel">
+      <div class="drawer-hd">
+        <span class="drawer-title">Select Sponsor Logo</span>
       </div>
-      <div class="color-picker-info">
-        <div class="color-picker-name">${zone.name}</div>
-        <div class="color-picker-hex" id="hex-${zone.id}">${currentColor.toUpperCase()}</div>
-      </div>`;
+      <div class="logos-grid-container">
+        ${MODELS_CONFIG.logoOptions.map(l => `
+          <div class="logo-option-card ${state.logo === l.id ? 'selected' : ''}" data-id="${l.id}">
+            ${l.file ? `<img src="${l.file}" alt="${l.name}" class="logo-option-img" onerror="this.style.display='none'">` : `
+              <svg style="width:20px;height:20px;margin-bottom:6px" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+              </svg>
+            `}
+            <span class="logo-option-name">${l.name}</span>
+          </div>
+        `).join('')}
+      </div>
+    </div>
+  `;
+  
+  container.querySelectorAll('.logo-option-card').forEach(card => {
+    card.addEventListener('click', () => {
+      const logoId = card.dataset.id;
+      const logoOption = MODELS_CONFIG.logoOptions.find(l => l.id === logoId);
+      if (logoOption) {
+        configurator.setLogo(logoOption);
+        renderLogosDrawer(container);
+      }
+    });
+  });
+}
 
-    const input = row.querySelector(`#color-${zone.id}`);
+let editPlateMode = null;
+
+function renderRiderIDDrawer(container) {
+  if (editPlateMode) {
+    renderEditPlateDrawer(container, editPlateMode);
+    return;
+  }
+  
+  container.innerHTML = `
+    <div class="drawer-panel">
+      <div class="drawer-hd">
+        <span class="drawer-title">Personalize Your Rider ID Plates</span>
+      </div>
+      <div class="sub-tabs-container" style="margin-top: 10px">
+        <div class="sub-tab-card" data-plate="front">
+          <div class="sub-tab-skew"></div>
+          <span class="sub-tab-label">FRONT</span>
+          <span class="sub-tab-preview">${state.plates.front.number || '—'}</span>
+        </div>
+        <div class="sub-tab-card" data-plate="left">
+          <div class="sub-tab-skew"></div>
+          <span class="sub-tab-label">LEFT</span>
+          <span class="sub-tab-preview">${state.plates.left.number || '—'}</span>
+        </div>
+        <div class="sub-tab-card" data-plate="right">
+          <div class="sub-tab-skew"></div>
+          <span class="sub-tab-label">RIGHT</span>
+          <span class="sub-tab-preview">${state.plates.right.number || '—'}</span>
+        </div>
+      </div>
+    </div>
+  `;
+  
+  container.querySelectorAll('.sub-tab-card').forEach(card => {
+    card.addEventListener('click', () => {
+      editPlateMode = card.dataset.plate;
+      state.activePlate = editPlateMode;
+      renderRiderIDDrawer(container);
+    });
+  });
+}
+
+function renderEditPlateDrawer(container, plateId) {
+  const p = state.plates[plateId];
+  const colors = [
+    { name: 'White', hex: '#FFFFFF' },
+    { name: 'Black', hex: '#000000' },
+    { name: 'Yellow', hex: '#D4FF00' },
+    { name: 'Red', hex: '#FF2233' },
+    { name: 'Blue', hex: '#0066FF' },
+    { name: 'Orange', hex: '#FF6600' },
+    { name: 'Gold', hex: '#FFD700' },
+    { name: 'Silver', hex: '#AAAAAA' }
+  ];
+  
+  container.innerHTML = `
+    <div class="drawer-panel">
+      <div class="drawer-hd">
+        <button class="drawer-back-btn" id="btn-plate-back" aria-label="Back">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <line x1="19" y1="12" x2="5" y2="12"></line>
+            <polyline points="12,19 5,12 12,5"></polyline>
+          </svg>
+        </button>
+        <span class="drawer-title">EDIT ${plateId.toUpperCase()} RIDER NUMBER</span>
+      </div>
+
+      <div class="sliders-grid">
+        <!-- LEFT COLUMN -->
+        <div class="slider-column">
+          <div class="edit-form-row">
+            <div class="edit-input-group">
+              <label class="edit-label">Number</label>
+              <input type="text" id="plate-num-input" class="edit-input-field" value="${p.number}" maxlength="4" style="width: 80px">
+            </div>
+            
+            <div class="edit-input-group">
+              <label class="edit-label">Number Font</label>
+              <select id="plate-font-select" class="font-dropdown-field" style="width: 140px">
+                ${MODELS_CONFIG.fontOptions.map(f => `<option value="${f.id}" ${p.font === f.id ? 'selected' : ''}>${f.name}</option>`).join('')}
+              </select>
+            </div>
+          </div>
+
+          <div class="edit-form-row" style="margin-top: 4px">
+            <div class="edit-input-group">
+              <label class="edit-label">Filled Color</label>
+              <div class="swatches-row">
+                ${colors.map(c => `<div class="swatch-circle ${p.color === c.hex ? 'selected' : ''}" data-color="${c.hex}" data-type="color" style="background: ${c.hex}"></div>`).join('')}
+              </div>
+            </div>
+            <div class="edit-input-group" style="margin-left: 10px">
+              <label class="edit-label">Stroke Color</label>
+              <div class="swatches-row">
+                ${colors.map(c => `<div class="swatch-circle ${p.strokeColor === c.hex ? 'selected' : ''}" data-color="${c.hex}" data-type="stroke" style="background: ${c.hex}"></div>`).join('')}
+              </div>
+            </div>
+          </div>
+
+          <div class="edit-form-row" style="margin-top: 6px">
+            <button class="gate-btn skip" id="btn-plate-apply-all" style="padding: 5px 16px; font-size: 9px; min-width: auto; transform: skewX(-10deg); border-width: 1.5px;">Apply To All</button>
+          </div>
+
+          <!-- Letter Spacing slider -->
+          <div class="control-row" style="margin-top: 4px">
+            <span class="control-label">Letter Spacing</span>
+            <div class="slider-wrapper">
+              <input type="range" class="slider-input plate-slider" data-prop="letterSpacing" min="-0.1" max="0.3" step="0.01" value="${p.letterSpacing}">
+              <span class="slider-value">${p.letterSpacing.toFixed(2)}</span>
+            </div>
+          </div>
+          <!-- Stroke Width slider -->
+          <div class="control-row">
+            <span class="control-label">Stroke Width</span>
+            <div class="slider-wrapper">
+              <input type="range" class="slider-input plate-slider" data-prop="strokeWidth" min="0" max="20" step="1" value="${p.strokeWidth}">
+              <span class="slider-value">${p.strokeWidth}</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- RIGHT COLUMN -->
+        <div class="slider-column">
+          <div class="control-row">
+            <span class="control-label">X Position</span>
+            <div class="slider-wrapper">
+              <input type="range" class="slider-input plate-slider" data-prop="x" min="0" max="2048" step="5" value="${p.x}">
+              <span class="slider-value">${Math.round(p.x)}</span>
+            </div>
+          </div>
+          <div class="control-row">
+            <span class="control-label">Y Position</span>
+            <div class="slider-wrapper">
+              <input type="range" class="slider-input plate-slider" data-prop="y" min="0" max="2048" step="5" value="${p.y}">
+              <span class="slider-value">${Math.round(p.y)}</span>
+            </div>
+          </div>
+          <div class="control-row">
+            <span class="control-label">Font Size</span>
+            <div class="slider-wrapper">
+              <input type="range" class="slider-input plate-slider" data-prop="fontSize" min="50" max="600" step="5" value="${p.fontSize}">
+              <span class="slider-value">${Math.round(p.fontSize)}</span>
+            </div>
+          </div>
+          <div class="control-row">
+            <span class="control-label">Rotation</span>
+            <div class="slider-wrapper">
+              <input type="range" class="slider-input plate-slider" data-prop="rotation" min="-180" max="180" step="2" value="${p.rotation}">
+              <span class="slider-value">${p.rotation}°</span>
+            </div>
+          </div>
+          <div class="control-row">
+            <span class="control-label">Horizontal Stretch</span>
+            <div class="slider-wrapper">
+              <input type="range" class="slider-input plate-slider" data-prop="stretchH" min="0.3" max="2.5" step="0.05" value="${p.stretchH}">
+              <span class="slider-value">${p.stretchH.toFixed(2)}</span>
+            </div>
+          </div>
+          <div class="control-row">
+            <span class="control-label">Vertical Stretch</span>
+            <div class="slider-wrapper">
+              <input type="range" class="slider-input plate-slider" data-prop="stretchV" min="0.3" max="2.5" step="0.05" value="${p.stretchV}">
+              <span class="slider-value">${p.stretchV.toFixed(2)}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+
+  container.querySelector('#btn-plate-back').addEventListener('click', () => {
+    editPlateMode = null;
+    renderRiderIDDrawer(container);
+  });
+
+  const numInput = container.querySelector('#plate-num-input');
+  numInput.addEventListener('input', (e) => {
+    p.number = e.target.value;
+    state.riderNumber = e.target.value;
+    configurator._redrawDecal();
+  });
+
+  const fontSelect = container.querySelector('#plate-font-select');
+  fontSelect.addEventListener('change', (e) => {
+    p.font = e.target.value;
+    configurator._redrawDecal();
+  });
+
+  container.querySelectorAll('.swatch-circle').forEach(swatch => {
+    swatch.addEventListener('click', () => {
+      const type = swatch.dataset.type;
+      const color = swatch.dataset.color;
+      if (type === 'color') {
+        p.color = color;
+      } else {
+        p.strokeColor = color;
+      }
+      renderEditPlateDrawer(container, plateId);
+      configurator._redrawDecal();
+    });
+  });
+
+  container.querySelector('#btn-plate-apply-all').addEventListener('click', () => {
+    Object.keys(state.plates).forEach(key => {
+      state.plates[key].number = p.number;
+      state.plates[key].font = p.font;
+      state.plates[key].color = p.color;
+      state.plates[key].strokeColor = p.strokeColor;
+    });
+    configurator._redrawDecal();
+    showToast('✦ Applied rider configuration to all plates', 'success');
+  });
+
+  container.querySelectorAll('.plate-slider').forEach(slider => {
+    slider.addEventListener('input', (e) => {
+      const prop = slider.dataset.prop;
+      const val = parseFloat(slider.value);
+      p[prop] = val;
+      
+      let displayVal = val;
+      if (prop === 'rotation') displayVal = val + '°';
+      else if (prop === 'stretchH' || prop === 'stretchV' || prop === 'letterSpacing') displayVal = val.toFixed(2);
+      else displayVal = Math.round(displayVal);
+      
+      slider.closest('.slider-wrapper').querySelector('.slider-value').textContent = displayVal;
+      configurator._redrawDecal();
+    });
+  });
+}
+
+function renderMaterialsDrawer(container) {
+  container.innerHTML = `
+    <div class="drawer-panel">
+      <div class="drawer-hd">
+        <span class="drawer-title">Print Base & Lamination Options</span>
+      </div>
+      <div class="materials-columns" style="margin-top: 8px">
+        <!-- PRINT BASE -->
+        <div class="material-column">
+          <div class="materials-section-title">PRINT BASE</div>
+          <div class="materials-grid">
+            ${(state.modelConfig?.printBases || ['Standard White', 'Silver Chrome', 'Holographic Chrome']).map(b => `
+              <div class="material-card ${state.printBase === b ? 'selected' : ''}" data-base="${b}">
+                <div class="material-card-icon">🧻</div>
+                <div class="material-card-name">${b}</div>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+        <!-- LAMINATION -->
+        <div class="material-column">
+          <div class="materials-section-title">LAMINATION</div>
+          <div class="materials-grid">
+            ${(state.modelConfig?.laminates || ['Standard Gloss', 'Matte', 'Gloss (SPARKLY) Holo']).map(l => `
+              <div class="material-card ${state.laminate === l ? 'selected' : ''}" data-lam="${l}">
+                <div class="material-card-icon">🛡️</div>
+                <div class="material-card-name">${l}</div>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+  
+  container.querySelectorAll('[data-base]').forEach(card => {
+    card.addEventListener('click', () => {
+      state.printBase = card.dataset.base;
+      renderMaterialsDrawer(container);
+      updateSummary();
+      showToast('✓ Base material: ' + state.printBase, 'success');
+    });
+  });
+  
+  container.querySelectorAll('[data-lam]').forEach(card => {
+    card.addEventListener('click', () => {
+      state.laminate = card.dataset.lam;
+      renderMaterialsDrawer(container);
+      updateSummary();
+      showToast('✓ Lamination: ' + state.laminate, 'success');
+    });
+  });
+}
+
+function renderPlateDrawer(container) {
+  container.innerHTML = `
+    <div class="drawer-panel">
+      <div class="drawer-hd">
+        <span class="drawer-title">Plate Styling & Details</span>
+      </div>
+      <p class="panel-hint" style="font-size:11px;color:var(--text-muted);margin-top:4px">Quick styles to customize background plate designs.</p>
+      <div class="presets-grid" style="margin-top:10px">
+        <div class="preset-swatch-card" id="btn-plate-style-1">
+          <div class="preset-swatch-color" style="background:#ffffff"></div>
+          <span class="preset-swatch-name">Clean White (Standard)</span>
+        </div>
+        <div class="preset-swatch-card" id="btn-plate-style-2">
+          <div class="preset-swatch-color" style="background:#000000"></div>
+          <span class="preset-swatch-name">Carbon Stealth</span>
+        </div>
+      </div>
+    </div>
+  `;
+  
+  container.querySelector('#btn-plate-style-1').addEventListener('click', () => {
+    Object.keys(state.plates).forEach(k => {
+      state.plates[k].strokeColor = '#ffffff';
+      state.plates[k].color = '#000000';
+    });
+    configurator._redrawDecal();
+    showToast('✓ Clean White Plate Style applied', 'success');
+  });
+  
+  container.querySelector('#btn-plate-style-2').addEventListener('click', () => {
+    Object.keys(state.plates).forEach(k => {
+      state.plates[k].strokeColor = '#000000';
+      state.plates[k].color = '#D4FF00';
+    });
+    configurator._redrawDecal();
+    showToast('✓ Carbon Stealth Plate Style applied', 'success');
+  });
+}
+
+function renderKitDrawer(container) {
+  container.innerHTML = `
+    <div class="drawer-panel">
+      <div class="drawer-hd">
+        <span class="drawer-title">Customize Graphic Kit Components</span>
+      </div>
+      <div class="materials-columns" style="margin-top:8px">
+        <div class="material-column">
+          <div class="materials-section-title">Kit Variant Options</div>
+          <div class="control-row">
+            <span class="control-label">Year</span>
+            <select id="select-year" class="font-dropdown-field" style="width: 140px">
+              ${(state.modelConfig?.years || ['2025', '2024', '2023']).map(y => `<option value="${y}" ${state.year === y ? 'selected' : ''}>${y}</option>`).join('')}
+            </select>
+          </div>
+          <div class="control-row" style="margin-top:8px">
+            <span class="control-label">Plastics Style</span>
+            <select id="select-plastics" class="font-dropdown-field" style="width: 140px">
+              ${(state.modelConfig?.plastics || ['Stock OEM', 'Race Cut', 'Wide Vent']).map(p => `<option value="${p}" ${state.plastics === p ? 'selected' : ''}>${p}</option>`).join('')}
+            </select>
+          </div>
+        </div>
+        
+        <div class="material-column">
+          <div class="materials-section-title">Front Fender & Rims</div>
+          <div class="control-row">
+            <span class="control-label">Front Fender</span>
+            <select id="select-fender" class="font-dropdown-field" style="width: 140px">
+              ${(state.modelConfig?.frontFenders || ['Standard', 'MX Vent', 'Shorty']).map(f => `<option value="${f}" ${state.frontFender === f ? 'selected' : ''}>${f}</option>`).join('')}
+            </select>
+          </div>
+          <div class="control-row" style="margin-top:8px">
+            <span class="control-label">Rims Graphics</span>
+            <select id="select-wheels" class="font-dropdown-field" style="width: 140px">
+              ${(state.modelConfig?.wheelsGraphics || ['No Decals', 'Brand Accent', 'Full Wrap']).map(w => `<option value="${w}" ${state.wheelsGraphics === w ? 'selected' : ''}>${w}</option>`).join('')}
+            </select>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+  
+  container.querySelector('#select-year').addEventListener('change', (e) => {
+    state.year = e.target.value;
+    updateSummary();
+  });
+  container.querySelector('#select-plastics').addEventListener('change', (e) => {
+    state.plastics = e.target.value;
+    updateSummary();
+  });
+  container.querySelector('#select-fender').addEventListener('change', (e) => {
+    state.frontFender = e.target.value;
+    updateSummary();
+  });
+  container.querySelector('#select-wheels').addEventListener('change', (e) => {
+    state.wheelsGraphics = e.target.value;
+    updateSummary();
+  });
+}
+
+function renderBikeDrawer(container) {
+  container.innerHTML = `
+    <div class="drawer-panel">
+      <div class="drawer-hd">
+        <span class="drawer-title">Model Colors & Presets</span>
+      </div>
+      
+      <div class="materials-columns" style="margin-top: 8px">
+        <div class="material-column">
+          <div class="materials-section-title">Color Presets</div>
+          <div class="presets-grid" style="flex-wrap: wrap; max-height: 120px; overflow-y: auto;">
+            ${COLOR_PRESETS.presets.map(p => `
+              <div class="preset-swatch-card" data-preset-id="${p.id}" style="${state.presetId === p.id ? 'border-color: #000;' : ''}">
+                <div class="preset-swatch-color" style="background: ${p.thumbnail}"></div>
+                <span class="preset-swatch-name">${p.name}</span>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+        
+        <div class="material-column">
+          <div class="materials-section-title">Custom Zone Colors</div>
+          <div class="color-picker-grid" style="max-height: 120px; overflow-y: auto;">
+            ${(state.modelConfig?.colorZones || []).map(z => {
+              const col = state.colors[z.id] || z.default;
+              return `
+                <div class="color-picker-card" data-zone-id="${z.id}">
+                  <input type="color" class="custom-picker-input" id="zone-picker-${z.id}" value="${col}">
+                  <div class="color-picker-details">
+                    <span class="color-picker-zone-name">${z.name}</span>
+                    <span class="color-picker-hex-val" id="zone-hex-${z.id}">${col.toUpperCase()}</span>
+                  </div>
+                </div>
+              `;
+            }).join('')}
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+  
+  container.querySelectorAll('[data-preset-id]').forEach(card => {
+    card.addEventListener('click', () => {
+      const id = card.dataset.presetId;
+      const preset = COLOR_PRESETS.presets.find(p => p.id === id);
+      if (preset) {
+        configurator.applyPreset(preset);
+        renderBikeDrawer(container);
+        showToast('✦ Applied preset: ' + preset.name, 'success');
+      }
+    });
+  });
+  
+  container.querySelectorAll('.color-picker-card').forEach(card => {
+    const zoneId = card.dataset.zoneId;
+    const input = card.querySelector(`#zone-picker-${zoneId}`);
+    const hexEl = card.querySelector(`#zone-hex-${zoneId}`);
+    
     input.addEventListener('input', (e) => {
       const hex = e.target.value;
-      row.querySelector(`#hex-${zone.id}`).textContent = hex.toUpperCase();
-      configurator.setZoneColor(zone.id, hex);
-      updateSummary();
-    });
-    pickers.appendChild(row);
-  });
-}
-
-function buildColorPresets(presets) {
-  const grid = document.getElementById('preset-grid');
-  if (!grid) return;
-  grid.innerHTML = '';
-  presets.forEach(p => {
-    const chip = document.createElement('button');
-    chip.className = 'preset-chip' + (state.presetId === p.id ? ' selected' : '');
-    chip.style.background = p.thumbnail;
-    chip.dataset.id = p.id;
-    chip.title = p.name;
-    chip.innerHTML = `<div class="preset-chip-label">${p.name}</div>`;
-    chip.addEventListener('click', () => {
-      document.querySelectorAll('.preset-chip').forEach(c => c.classList.remove('selected'));
-      chip.classList.add('selected');
-      configurator.applyPreset(p);
-      showToast('✦ ' + p.name + ' preset applied', 'success');
-    });
-    grid.appendChild(chip);
-  });
-}
-
-function buildFontSelector(fonts) {
-  const container = document.getElementById('font-grid');
-  if (!container) return;
-  container.innerHTML = '';
-  fonts.forEach(f => {
-    const card = document.createElement('div');
-    card.className = 'font-card' + (state.nameFont === f.id ? ' selected' : '');
-    card.innerHTML = `
-      <div class="font-card-name">${f.name}</div>
-      <div class="font-card-preview" style="font-family: ${f.family}">RIDER</div>`;
-    card.addEventListener('click', () => {
-      container.querySelectorAll('.font-card').forEach(c => c.classList.remove('selected'));
-      card.classList.add('selected');
-      configurator.setFont(f.id);
-      updateTextPreview();
-    });
-    container.appendChild(card);
-  });
-}
-
-function buildLogoGrid(logos) {
-  const grid = document.getElementById('logo-grid');
-  if (!grid) return;
-  grid.innerHTML = '';
-  logos.forEach(l => {
-    const card = document.createElement('div');
-    card.className = 'logo-card' + (state.logo === l.id ? ' selected' : '');
-    if (l.file) {
-      card.innerHTML = `<img src="${l.file}" alt="${l.name}" onerror="this.style.display='none'">`;
-    } else {
-      card.innerHTML = `<svg viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="1.5">
-        <line x1="10" y1="10" x2="30" y2="30"/><line x1="30" y1="10" x2="10" y2="30"/>
-      </svg>`;
-    }
-    card.innerHTML += `<div class="logo-card-name">${l.name}</div>`;
-    card.addEventListener('click', () => {
-      grid.querySelectorAll('.logo-card').forEach(c => c.classList.remove('selected'));
-      card.classList.add('selected');
-      configurator.setLogo(l);
-    });
-    grid.appendChild(card);
-  });
-}
-
-/* ============================================================
-   MODEL SELECTION
-   ============================================================ */
-async function selectModel(modelId) {
-  const modelConfig = MODELS_CONFIG.models.find(m => m.id === modelId);
-  if (!modelConfig) return;
-
-  state.modelId = modelId;
-  state.modelConfig = modelConfig;
-
-  // Update model card UI
-  document.querySelectorAll('.model-card').forEach(c => {
-    c.classList.toggle('selected', c.dataset.id === modelId);
-  });
-
-  // Update summary model name
-  const summaryModelName = document.getElementById('summary-model-name');
-  if (summaryModelName) summaryModelName.textContent = modelConfig.name;
-
-  // Build model-specific options
-  buildOptionPills('year-pills', modelConfig.years, 'year', () => updateSummary());
-  buildOptionPills('plastics-pills', modelConfig.plastics, 'plastics', () => updateSummary());
-  buildOptionPills('fender-pills', modelConfig.frontFenders, 'frontFender', () => updateSummary());
-  buildOptionPills('printbase-pills', modelConfig.printBases, 'printBase', () => updateSummary());
-  buildOptionPills('laminate-pills', modelConfig.laminates, 'laminate', () => updateSummary());
-  buildOptionPills('wheels-pills', modelConfig.wheelsGraphics, 'wheelsGraphics', () => updateSummary());
-  buildColorZoneTabs(modelConfig);
-  updateColorPickerUI();
-
-  // Set price in left strip
-  const priceEl = document.getElementById('price-value');
-  if (priceEl) {
-    priceEl.textContent = modelConfig.currency + ' ' + modelConfig.price.toLocaleString();
-  }
-  // Update model name in strip
-  const stripName = document.getElementById('strip-model-name');
-  if (stripName) stripName.textContent = modelConfig.name;
-
-  // Load 3D model
-  setLoadingProgress(10, 'Loading model…');
-  showLoadingOverlay(true);
-
-  await configurator.loadModel(modelConfig, (pct) => {
-    setLoadingProgress(pct, pct < 90 ? 'Downloading 3D model…' : 'Setting up materials…');
-  });
-
-  setLoadingProgress(100, 'Ready!');
-  setTimeout(() => showLoadingOverlay(false), 400);
-
-  updateSummary();
-  showToast('🏍 ' + modelConfig.name + ' loaded', 'success');
-}
-
-/* ============================================================
-   COLOR UI SYNC
-   ============================================================ */
-function updateColorPickerUI() {
-  if (!state.modelConfig) return;
-  state.modelConfig.colorZones.forEach(zone => {
-    const input = document.getElementById(`color-${zone.id}`);
-    const hexEl = document.getElementById(`hex-${zone.id}`);
-    const col = state.colors[zone.id] || zone.default;
-    if (input) input.value = col;
-    if (hexEl) hexEl.textContent = col.toUpperCase();
-  });
-}
-
-/* ============================================================
-   TEXT PREVIEW
-   ============================================================ */
-function updateTextPreview() {
-  const fontMap = {
-    bebas: "'Bebas Neue', Impact, sans-serif",
-    racing: "'Racing Sans One', Impact, sans-serif",
-    orbitron: "'Orbitron', sans-serif",
-    bangers: "'Bangers', cursive",
-    russo: "'Russo One', sans-serif",
-  };
-  const namePreview = document.getElementById('name-preview');
-  const numPreview = document.getElementById('number-preview');
-  const ff = fontMap[state.nameFont] || fontMap.bebas;
-  if (namePreview) {
-    namePreview.style.fontFamily = ff;
-    namePreview.style.color = state.nameColor;
-    namePreview.textContent = state.riderName || 'YOUR NAME';
-  }
-  if (numPreview) {
-    numPreview.style.fontFamily = ff;
-    numPreview.style.color = state.numberColor;
-    numPreview.textContent = state.riderNumber || '000';
-  }
-}
-
-/* ============================================================
-   SUMMARY PANEL
-   ============================================================ */
-function updateSummary() {
-  const items = [
-    { key: 'Model',   val: state.modelConfig?.name || '—' },
-    { key: 'Year',    val: state.year || '—' },
-    { key: 'Plastics', val: state.plastics || '—' },
-    { key: 'Front Fender', val: state.frontFender || '—' },
-    { key: 'Print Base', val: state.printBase || '—' },
-    { key: 'Laminate', val: state.laminate || '—' },
-    { key: 'Wheels',  val: state.wheelsGraphics || '—' },
-    { key: 'Name',    val: state.riderName || '—' },
-    { key: 'Number',  val: state.riderNumber || '—' },
-    { key: 'Font',    val: state.nameFont || '—' },
-    { key: 'Logo',    val: state.logo || 'None' },
-  ];
-  // summary-items no longer exists in new layout; kept for compatibility
-}
-
-/* ============================================================
-   LOADING OVERLAY
-   ============================================================ */
-function showLoadingOverlay(visible) {
-  const overlay = document.getElementById('viewer-loading');
-  if (overlay) overlay.style.display = visible ? 'flex' : 'none';
-}
-
-function setLoadingProgress(pct, label) {
-  const bar = document.getElementById('loading-bar-fill');
-  const txt = document.getElementById('loading-pct');
-  const lbl = document.getElementById('loading-label');
-  if (bar) bar.style.width = pct + '%';
-  if (txt) txt.textContent = pct + '%';
-  if (lbl) lbl.textContent = label || '';
-}
-
-/* ============================================================
-   AUTO-ROTATE BADGE
-   ============================================================ */
-function updateAutoRotateBadge(rotating) {
-  const badge = document.getElementById('auto-rotate-badge');
-  if (!badge) return;
-  badge.classList.toggle('paused', !rotating);
-  badge.querySelector('.badge-text').textContent = rotating ? 'AUTO ROTATE' : 'PAUSED';
-}
-
-/* ============================================================
-   STEP NAVIGATION
-   ============================================================ */
-function setupStepNav() {
-  const tabs = document.querySelectorAll('.step-tab');
-  const panels = document.querySelectorAll('.config-panel');
-
-  tabs.forEach(tab => {
-    tab.addEventListener('click', () => {
-      const target = tab.dataset.panel;
-      tabs.forEach(t => t.classList.remove('active'));
-      panels.forEach(p => p.classList.remove('active'));
-      tab.classList.add('active');
-      document.getElementById(target)?.classList.add('active');
-    });
-  });
-
-  // Next buttons
-  document.querySelectorAll('[data-next-panel]').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const nextId = btn.dataset.nextPanel;
-      const nextTab = document.querySelector(`[data-panel="${nextId}"]`);
-      if (nextTab) {
-        // Mark current tab done
-        const currentTab = document.querySelector('.step-tab.active');
-        if (currentTab) currentTab.classList.add('done');
-        nextTab.click();
-        nextTab.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
-      }
+      hexEl.textContent = hex.toUpperCase();
+      configurator.setZoneColor(zoneId, hex);
     });
   });
 }
@@ -1351,9 +1243,19 @@ function setupStepNav() {
    ============================================================ */
 function setupViewerControls() {
   document.getElementById('btn-reset-cam')?.addEventListener('click', () => configurator.resetCamera());
-  document.getElementById('btn-view-front')?.addEventListener('click', () => configurator.setCameraView('front'));
-  document.getElementById('btn-view-rear')?.addEventListener('click', () => configurator.setCameraView('rear'));
-  document.getElementById('btn-view-top')?.addEventListener('click', () => configurator.setCameraView('top'));
+  
+  document.getElementById('btn-toggle-grid')?.addEventListener('click', () => {
+    if (configurator.grid) {
+      configurator.grid.visible = !configurator.grid.visible;
+      showToast(configurator.grid.visible ? '✓ Grid enabled' : '✗ Grid disabled', 'info');
+    }
+  });
+
+  document.getElementById('btn-toggle-rotate')?.addEventListener('click', () => {
+    configurator.controls.autoRotate = !configurator.controls.autoRotate;
+    showToast(configurator.controls.autoRotate ? '✓ Auto-rotate active' : '✗ Auto-rotate paused', 'info');
+  });
+
   document.getElementById('btn-screenshot')?.addEventListener('click', () => {
     const url = configurator.captureScreenshot();
     const a = document.createElement('a');
@@ -1361,6 +1263,16 @@ function setupViewerControls() {
     a.download = '4d-design-config.jpg';
     a.click();
     showToast('📸 Screenshot saved', 'success');
+  });
+
+  // Top-Right layout preview actions
+  document.getElementById('btn-layout-reset')?.addEventListener('click', () => {
+    configurator.resetCamera();
+    showToast('✓ 3D View reset', 'info');
+  });
+  document.getElementById('btn-layout-focus')?.addEventListener('click', () => {
+    configurator.setCameraView('side');
+    showToast('✓ Camera focused on plates', 'info');
   });
 }
 
@@ -1375,27 +1287,20 @@ function showToast(message, type = 'success') {
   toast.innerHTML = message;
   container.appendChild(toast);
   setTimeout(() => {
-    toast.style.animation = 'toastOut 0.3s forwards';
-    setTimeout(() => toast.remove(), 300);
+    toast.style.opacity = '0';
+    setTimeout(() => toast.remove(), 400);
   }, 3000);
 }
 
 /* ============================================================
-   SHOPIFY CART
+   SHOPIFY CART INTEGRATION
    ============================================================ */
 async function addToCart() {
   const btn = document.getElementById('btn-add-cart');
   if (!btn || !state.modelConfig) return;
 
-  if (!state.year || !state.plastics) {
-    showToast('⚠ Please select Year and Plastics options', 'error');
-    document.getElementById('tab-kit')?.click();
-    return;
-  }
-
   btn.classList.add('loading');
 
-  // Capture screenshot for order reference
   let previewDataUrl = '';
   try { previewDataUrl = configurator.captureScreenshot(); } catch(e) {}
 
@@ -1406,9 +1311,9 @@ async function addToCart() {
     'Print Base': state.printBase || '',
     'Laminate': state.laminate || '',
     'Wheels Graphics': state.wheelsGraphics || '',
-    'Rider Name': state.riderName || '',
-    'Rider Number': state.riderNumber || '',
-    'Font Style': state.nameFont || '',
+    'Rider Number (Front)': state.plates.front.number || '',
+    'Rider Number (Left)': state.plates.left.number || '',
+    'Rider Number (Right)': state.plates.right.number || '',
     'Logo': state.logo || 'None',
     ...Object.fromEntries(
       (state.modelConfig?.colorZones || []).map(z => [z.name + ' Color', state.colors[z.id] || z.default])
@@ -1425,8 +1330,6 @@ async function addToCart() {
       properties,
       previewDataUrl,
     });
-    // If in iframe mode, the loading state is removed by the postMessage handler (4d:cart-added/4d:cart-error)
-    // If in standalone mode, remove loading now
     if (window.parent === window) {
       btn.classList.remove('loading');
     }
@@ -1436,18 +1339,12 @@ async function addToCart() {
   }
 }
 
-function showSuccessModal(properties) {
-  const modal = document.getElementById('success-modal');
-  if (modal) modal.classList.remove('hidden');
-}
-
 /* ============================================================
    APP BOOTSTRAP
    ============================================================ */
 let configurator;
 
 async function init() {
-  // Check WebGL
   const canvas = document.getElementById('three-canvas');
   if (!canvas) return;
 
@@ -1458,94 +1355,118 @@ async function init() {
     return;
   }
 
-  // Load configs
+  // Load configuration files
   await loadConfigs();
 
-  // Init Three.js
+  // Instantiate 3D configurator class
   configurator = new MotorcycleConfigurator(canvas);
   configurator.init();
   window._configuratorEngine = configurator;
 
-  // Build UI
-  buildColorPresets(COLOR_PRESETS.presets);
-  buildFontSelector(MODELS_CONFIG.fontOptions);
-  buildLogoGrid(MODELS_CONFIG.logoOptions);
-
-  // Setup viewer controls
+  // Setup viewer buttons
   setupViewerControls();
 
-  // Text inputs
-  const nameInput = document.getElementById('input-rider-name');
-  const numInput = document.getElementById('input-rider-number');
-
-  nameInput?.addEventListener('input', (e) => {
-    state.riderName = e.target.value;
-    configurator.setRiderName(e.target.value);
-    updateTextPreview();
-    updateSummary();
-  });
-  numInput?.addEventListener('input', (e) => {
-    state.riderNumber = e.target.value;
-    configurator.setRiderNumber(e.target.value);
-    updateTextPreview();
-    updateSummary();
-  });
-
-  // Text color dots
-  document.querySelectorAll('.text-color-dot').forEach(dot => {
-    dot.addEventListener('click', () => {
-      const color = dot.dataset.color;
-      const target = dot.dataset.target;
-      dot.closest('.text-color-row')?.querySelectorAll('.text-color-dot').forEach(d => {
-        if (d.dataset.target === target) d.classList.remove('selected');
-      });
-      dot.classList.add('selected');
-      if (target === 'name') {
-        state.nameColor = color;
-        configurator.setNameColor(color);
-      } else {
-        state.numberColor = color;
-        configurator.setNumberColor(color);
-      }
-      updateTextPreview();
-    });
-  });
-
-  // Add to cart button
+  // Bind cart submit button
   document.getElementById('btn-add-cart')?.addEventListener('click', addToCart);
 
-  // Modal close
+  // Close success modal button
   document.getElementById('modal-close')?.addEventListener('click', () => {
     document.getElementById('success-modal')?.classList.add('hidden');
   });
-  document.getElementById('modal-view-cart')?.addEventListener('href', () => {
-    window.location.href = '/cart';
-  });
 
-  // Summary update interval
+  // Summary loop updater
   setInterval(() => {
     if (state.modelId) updateSummary();
   }, 2000);
 
-  // Load first model
+  // Pre-load the first model in the background as soon as we start
   if (MODELS_CONFIG.models.length > 0) {
-    await selectModel(MODELS_CONFIG.models[0].id);
+    const defaultModel = MODELS_CONFIG.models[0];
+    state.modelId = defaultModel.id;
+    state.modelConfig = defaultModel;
+    
+    // Begin loading model silently while user is on personalization gate
+    configurator.loadModel(defaultModel, (pct) => {
+      setLoadingProgress(pct, pct < 90 ? 'Loading 3D asset...' : 'Optimizing textures...');
+    });
   }
 
-  // Reveal app
-  document.getElementById('loading-screen')?.classList.add('hidden');
-  document.getElementById('app')?.classList.add('visible');
+  // Set up Personalization Gate welcome screen buttons
+  const gateNextBtn = document.getElementById('gate-next-btn');
+  const gateSkipBtn = document.getElementById('gate-skip-btn');
+  const gateBackBtn = document.querySelector('.gate-back-btn');
 
-  updateTextPreview();
+  const transitionToCustomizer = () => {
+    // Collect gate values
+    const nameVal = document.getElementById('gate-rider-name').value;
+    const numVal = document.getElementById('gate-rider-number').value;
+
+    if (numVal) {
+      Object.keys(state.plates).forEach(k => {
+        state.plates[k].number = numVal;
+      });
+      state.riderNumber = numVal;
+    }
+    if (nameVal) {
+      state.riderName = nameVal;
+    }
+
+    configurator._redrawDecal();
+
+    // Hide personalization page
+    document.getElementById('gate-container').classList.add('hidden');
+
+    if (configurator.isLoading) {
+      // If 3D model is still downloading, show loading screen
+      document.getElementById('loading-screen').classList.remove('hidden');
+      const checkLoaded = setInterval(() => {
+        if (!configurator.isLoading) {
+          clearInterval(checkLoaded);
+          document.getElementById('loading-screen').classList.add('hidden');
+          document.getElementById('app').classList.remove('hidden');
+          switchBottomTab('rider-id'); // show RIDER ID drawer first
+        }
+      }, 100);
+    } else {
+      document.getElementById('app').classList.remove('hidden');
+      switchBottomTab('rider-id'); // show RIDER ID drawer first
+    }
+  };
+
+  gateNextBtn?.addEventListener('click', transitionToCustomizer);
+  gateSkipBtn?.addEventListener('click', transitionToCustomizer);
+  gateBackBtn?.addEventListener('click', () => {
+    // If embedded, send a postMessage to parent store
+    window.parent.postMessage({ type: '4d:back' }, '*');
+  });
+
+  // Bind Bottom Tab Category Navigation
+  document.querySelectorAll('.bottom-tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const tabId = btn.dataset.tab;
+      editPlateMode = null; // reset edit sub-panel
+      switchBottomTab(tabId);
+    });
+  });
+}
+
+function updateSummary() {
+  // Summary structure is checked during Shopify add-to-cart mapping
+}
+
+function showLoadingOverlay(visible) {
+  const overlay = document.getElementById('viewer-loading');
+  if (overlay) overlay.style.display = visible ? 'flex' : 'none';
+}
+
+function setLoadingProgress(pct, label) {
+  const bar = document.getElementById('loading-bar-fill');
+  const txt = document.getElementById('loading-pct');
+  const lbl = document.getElementById('loading-label');
+  if (bar) bar.style.width = pct + '%';
+  if (txt) txt.textContent = pct + '%';
+  if (lbl) lbl.textContent = label || '';
 }
 
 // Start
-document.addEventListener('DOMContentLoaded', init);
-window.addEventListener('load', () => {
-  // Ensure fonts loaded
-  document.fonts.ready.then(updateTextPreview);
-});
-
-// Expose for Shopify theme integration
-window.configurator4D = { state, selectModel, addToCart, showToast };
-window._configuratorEngine = null; // Will be set in init
+init().catch(console.error);
