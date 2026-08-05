@@ -47,9 +47,9 @@ const state = {
   // Multi-plate configuration state
   activePlate: 'front',
   plates: {
-    front: { number: '333', font: 'bebas', color: '#000000', strokeColor: '#ffffff', x: 512, y: 1536, fontSize: 240, rotation: 0, stretchH: 1.0, stretchV: 1.0, letterSpacing: 0.02, strokeWidth: 4 },
-    left:  { number: '333', font: 'bebas', color: '#000000', strokeColor: '#ffffff', x: 1180, y: 1024, fontSize: 200, rotation: 0, stretchH: 1.0, stretchV: 1.0, letterSpacing: 0.02, strokeWidth: 4 },
-    right: { number: '333', font: 'bebas', color: '#000000', strokeColor: '#ffffff', x: 680, y: 1024, fontSize: 200, rotation: 0, stretchH: 1.0, stretchV: 1.0, letterSpacing: 0.02, strokeWidth: 4 },
+    front: { number: '333', font: 'bebas', color: '#000000', strokeColor: '#ffffff', x: 757, y: 1487, fontSize: 240, rotation: 0, stretchH: 1.0, stretchV: 1.0, letterSpacing: 0.02, strokeWidth: 4 },
+    left:  { number: '333', font: 'bebas', color: '#000000', strokeColor: '#ffffff', x: 1781, y: 463, fontSize: 200, rotation: 90, stretchH: 1.0, stretchV: 1.0, letterSpacing: 0.02, strokeWidth: 4 },
+    right: { number: '333', font: 'bebas', color: '#000000', strokeColor: '#ffffff', x: 1781, y: 1487, fontSize: 200, rotation: -90, stretchH: 1.0, stretchV: 1.0, letterSpacing: 0.02, strokeWidth: 4 },
   }
 };
 
@@ -348,12 +348,12 @@ class MotorcycleConfigurator {
             }
 
             if (obj.isMesh) {
+              const fullName = obj.name.toLowerCase();
               obj.castShadow = true;
               obj.receiveShadow = true;
               this.meshMap[obj.name] = obj;
 
               const oldMat = obj.material;
-              const fullName = obj.name.toLowerCase();
 
               // Map zone to mesh
               const matchedZones = modelConfig.colorZones.filter(z => {
@@ -587,33 +587,37 @@ class MotorcycleConfigurator {
     drawBaseTemplate(tileW, tileH, tileW, tileH);
 
     // Render fixed white background plates (Left, Right, Front)
-    const drawBackgroundPlate = (x, y, w, h) => {
+    const drawBackgroundPlate = (p, w, h) => {
+      ctx.save();
+      ctx.translate(p.x, p.y);
+      ctx.rotate((p.rotation * Math.PI) / 180);
+
       ctx.fillStyle = 'rgba(255,255,255,0.92)';
       ctx.strokeStyle = bodyColor;
       ctx.lineWidth = 14;
       
       const r = w * 0.12;
       ctx.beginPath();
-      ctx.moveTo(x - w/2 + r, y - h/2);
-      ctx.lineTo(x + w/2 - r, y - h/2);
-      ctx.quadraticCurveTo(x + w/2, y - h/2, x + w/2, y - h/2 + r);
-      ctx.lineTo(x + w/2, y + h/2 - r);
-      ctx.quadraticCurveTo(x + w/2, y + h/2, x + w/2 - r, y + h/2);
-      ctx.lineTo(x - w/2 + r, y + h/2);
-      ctx.quadraticCurveTo(x - w/2, y + h/2, x - w/2, y + h/2 - r);
-      ctx.lineTo(x - w/2, y - h/2 + r);
-      ctx.quadraticCurveTo(x - w/2, y - h/2, x - w/2 + r, y - h/2);
+      ctx.moveTo(-w/2 + r, -h/2);
+      ctx.lineTo(w/2 - r, -h/2);
+      ctx.quadraticCurveTo(w/2, -h/2, w/2, -h/2 + r);
+      ctx.lineTo(w/2, h/2 - r);
+      ctx.quadraticCurveTo(w/2, h/2, w/2 - r, h/2);
+      ctx.lineTo(-w/2 + r, h/2);
+      ctx.quadraticCurveTo(-w/2, h/2, -w/2, h/2 - r);
+      ctx.lineTo(-w/2, -h/2 + r);
+      ctx.quadraticCurveTo(-w/2, -h/2, -w/2 + r, -h/2);
       ctx.closePath();
       ctx.fill();
       ctx.stroke();
+
+      ctx.restore();
     };
 
-    // Right Plate (sticker.003) sits at X ~ 680, Y ~ 1024
-    drawBackgroundPlate(680, 1024, 380, 520);
-    // Left Plate (sticker.002) sits at X ~ 1180, Y ~ 1024
-    drawBackgroundPlate(1180, 1024, 380, 520);
-    // Front Plate sits at X ~ 512, Y ~ 1536
-    drawBackgroundPlate(512, 1536, 400, 480);
+    // Draw background plates at their synchronized plate coordinates
+    drawBackgroundPlate(state.plates.left, 380, 520);
+    drawBackgroundPlate(state.plates.right, 380, 520);
+    drawBackgroundPlate(state.plates.front, 400, 480);
 
     // Helper: draw text and name relative to coordinate sliders
     const drawPlateRiderText = (p, type) => {
