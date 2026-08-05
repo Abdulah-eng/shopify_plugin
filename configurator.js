@@ -341,8 +341,10 @@ class MotorcycleConfigurator {
                 'yamaha_yzf_450_2020.016', // duplicate .002 handlebar set
                 'yamaha_yzf_450_2020.017', 'yamaha_yzf_450_2020.018',
                 // Mispositioned sticker/decal planes (plane meshes at wrong world positions)
-                'new graphic', // at local [-0.574, 0, 0] - not on ATV
-                'sticker.001', // at local [-3.639, 0, 0.284] - not on ATV
+                'new graphic',  // at local [-0.574, 0, 0] - not on ATV
+                'sticker.001',  // at local [-3.639, 0, 0.284] - not on ATV
+                'sticker.002',  // flat plane floating in wrong position
+                'sticker.003',  // flat plane floating in wrong position
               ]);
 
               const isToHide = (
@@ -451,6 +453,28 @@ class MotorcycleConfigurator {
               }
             }
           });
+
+          // ── WORLD-SPACE SANITY FILTER ──────────────────────────────────────────
+          // Catches any geometry that survived the name-based filters but is clearly
+          // NOT part of the ATV: parts below the ground plane, high in the sky, or
+          // far to the side. The ATV fits within roughly ±1.5 units of world origin.
+          this.model.traverse(obj => {
+            if (!obj.isMesh || !obj.visible) return;
+            const wp = new THREE.Vector3();
+            obj.getWorldPosition(wp);
+            const isStray = (
+              wp.y < -0.15 ||          // below ground plane
+              wp.y > 2.0 ||            // high in sky (dirt-bike forks at Y=37+)
+              Math.abs(wp.x) > 2.0 ||  // too far left/right
+              Math.abs(wp.z) > 2.0     // too far front/back
+            );
+            if (isStray) {
+              obj.visible = false;
+              obj.castShadow = false;
+              obj.receiveShadow = false;
+            }
+          });
+          // ── END WORLD-SPACE SANITY FILTER ─────────────────────────────────────
 
           this.scene.add(this.model);
 
