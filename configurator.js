@@ -325,19 +325,24 @@ class MotorcycleConfigurator {
 
               // Root groups that are dirt-bike duplicates or Husqvarna/KTM parts from
               // the shared Blender scene file. Identified by analysing the GLB structure.
-              // Only allow the main root (no suffix) and .011 (front shock assembly).
+              // Only allow the main root (no suffix) - all numbered variants are bad.
+              // Note: .011 front shocks are dirt-bike forks at local Y=37-64 units.
+              //       ATV front suspension is in the main root as axis_chrome/black parts.
               const badRootGroups = new Set([
                 'yamaha_yzf_450_2020.001', 'yamaha_yzf_450_2020.002', 'yamaha_yzf_450_2020.003',
                 'yamaha_yzf_450_2020.004', 'yamaha_yzf_450_2020.005',
                 'yamaha_yzf_450_2020.006', 'yamaha_yzf_450_2020.007',
                 'yamaha_yzf_450_2020.008', 'yamaha_yzf_450_2020.009',
                 'yamaha_yzf_450_2020.010',
-                // .011 is allowed — it contains the front shock absorbers
+                'yamaha_yzf_450_2020.011', // dirt bike front forks at Y=37-64 scale
                 'yamaha_yzf_450_2020.012',
                 'yamaha_yzf_450_2020.013', // duplicate .001 handlebar set
                 'yamaha_yzf_450_2020.014', 'yamaha_yzf_450_2020.015',
                 'yamaha_yzf_450_2020.016', // duplicate .002 handlebar set
                 'yamaha_yzf_450_2020.017', 'yamaha_yzf_450_2020.018',
+                // Mispositioned sticker/decal planes (plane meshes at wrong world positions)
+                'new graphic', // at local [-0.574, 0, 0] - not on ATV
+                'sticker.001', // at local [-3.639, 0, 0.284] - not on ATV
               ]);
 
               const isToHide = (
