@@ -368,12 +368,14 @@ class MotorcycleConfigurator {
                 (objName.startsWith('plane.') && !objName.includes('.006') && !objName.includes('.007') && !objName.includes('.008') && !objName.includes('.009')) ||
                 objName.includes('render.') ||
                 objName === 'handle.002' ||
-                // Stray Blender helper geometry (only if direct scene roots)
-                (rootName === objName && /^cylinder(\.\d+)?$/.test(objName)) ||
-                (rootName === objName && /^circle(\.\d+)?$/.test(objName)) ||
-                (rootName === objName && /^cube(\.\d+)?$/.test(objName)) ||
-                (rootName === objName && /^bolt(\.\d+)?$/.test(objName)) ||
-                objName === 'hex nut'
+                // Stray Blender helper geometry — hide anything whose ROOT node
+                // is one of these Blender default primitives
+                /^cylinder(\.\d+)?$/.test(rootName) ||
+                /^circle(\.\d+)?$/.test(rootName) ||
+                /^cube(\.\d+)?$/.test(rootName) ||
+                /^bolt(\.\d+)?$/.test(rootName) ||
+                /^hex nut(\.\d+)?$/.test(rootName) ||
+                rootName === 'bolt.000'
               );
 
               if (isToHide) {
